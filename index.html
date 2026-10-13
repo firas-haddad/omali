@@ -25,7 +25,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> تسجيل الدخول بـ Google
     </button>
     <p style="margin:12px 0;color:#aaa;font-size:11px">او</p>
-    <input id="passInput" type="password" placeholder="الرمز" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;margin-bottom:12px;text-align:center;color:#111">
+    <input id="passInput" type="password" placeholder="الرمز القديم" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;margin-bottom:12px;text-align:center;color:#111">
     <button onclick="checkPass()" style="width:100%;padding:12px;background:#16a34a;color:white;border-radius:10px;font-weight:bold">دخول بالرمز القديم</button>
     <p id="passError" style="color:red;margin-top:10px;display:none"></p>
     <p id="passInfo" style="color:#16a34a;margin-top:10px;display:none;font-size:12px"></p>
@@ -75,12 +75,17 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 
 
-<div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10">
-<p id="confirmText" class="font-bold mb-2">متأكد؟</p><p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p>
-<div class="flex gap-2"><button id="confirmYes" class="flex-1 bg-green-500 text-black font-black py-4 rounded-xl">تأكيد</button><button onclick="closeConfirm()" class="flex-1 bg-zinc-800 py-4 <div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10">
-<p id="confirmText" class="font-bold mb-2">متأكد؟</p><p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p>
-<div class="flex gap-2"><button id="confirmYes" class="flex-1 bg-green-500 text-black font-black py-4 rounded-xl">تأكيد</button><button onclick="closeConfirm()" class="flex-1 bg-zinc-800 py-4 rounded-xl">إلغاء</button></div>
-</div></div>
+<div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6">
+  <div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10">
+    <p id="confirmText" class="font-bold mb-2 text-white">متأكد؟</p>
+    <p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p>
+    <div class="flex gap-2">
+      <button id="confirmYes" class="flex-1 bg-green-500 text-black font-black py-4 rounded-xl">تأكيد</button>
+      <button onclick="closeConfirm()" class="flex-1 bg-zinc-800 text-white py-4 rounded-xl">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div id="hoursModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm border border-white/10">
 <h3 class="font-black mb-4">كم ساعة؟</h3>
 <div class="grid grid-cols-4 gap-2 mb-4">
@@ -92,7 +97,9 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <div class="flex gap-2"><input id="customHours" type="number" step="0.5" placeholder="2.5" class="flex-1 bg-zinc-800 rounded-xl p-3 en-num"><button onclick="setCustomHours()" class="bg-amber-400 text-black font-bold px-6 rounded-xl">حفظ</button></div>
 <button onclick="closeHours()" class="w-full mt-3 bg-zinc-800 py-3 rounded-xl text-xs">إلغاء</button>
 </div></div>
+
 <div id="archiveModal" class="fixed inset-0 bg-black z-[55] hidden overflow-y-auto p-4"><button onclick="closeArchive()" class="w-10 h-10 glass rounded-full mb-4"><i class="fa-solid fa-xmark"></i></button><h2 class="font-black text-xl mb-4">الأرشيف</h2><div id="archiveList"></div></div>
+
 <div id="backupModal" class="fixed inset-0 bg-black/90 z-[55] hidden"><div class="bg-zinc-900 w-full mt-auto rounded-t-[30px] p-6 absolute bottom-0">
 <h2 class="font-black mb-4">نسخ احتياطي ☁️ Firebase</h2>
 <button onclick="exportBackup()" class="w-full bg-white text-black font-bold py-4 rounded-xl mb-2">تصدير JSON</button>
@@ -100,9 +107,10 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <button onclick="cloudSaveReal()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2">☁️ حفظ سحابي يدوي</button>
 <button onclick="closeBackup()" class="w-full mt-3 bg-zinc-800 py-3 rounded-xl">إغلاق</button>
 </div></div>
+
 <canvas id="shareCanvas" width="1080" height="1920" class="hidden"></canvas>
 <script>
-// Firebase - نفس مشروعك
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDYUL13ThZeljnbr-Wmz8vcK9TTvOBTdaU",
   authDomain: "firas-hadada.firebaseapp.com",
@@ -122,6 +130,53 @@ let currentProfileId=null,currentWeekStart=getWeekStart(new Date()),tempPhoto=nu
 const SITE_PASS = "Nawroz123@";
 let currentUserId = null;
 
+// ===== اصلاح زر Google للموبايل =====
+async function loginGoogle(){
+  const provider = new firebase.auth.GoogleAuthProvider();
+  const errBox = document.getElementById('passError');
+  try{
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    const result = await auth.signInWithPopup(provider);
+    if(result.user){
+      document.getElementById('lockScreen').style.display='none';
+      currentUserId=result.user.uid;
+      document.getElementById('userEmailDisplay').innerText=result.user.displayName+" - "+result.user.email;
+      cloudLoad();
+    }
+  }catch(e){
+    console.log("Popup failed -> Redirect", e.code);
+    auth.signInWithRedirect(provider);
+  }
+}
+auth.getRedirectResult().then((r)=>{
+  if(r && r.user){
+    currentUserId=r.user.uid;
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('userEmailDisplay').innerText=r.user.displayName+" - "+r.user.email;
+    cloudLoad();
+  }
+});
+function logout(){ auth.signOut().then(()=>{ localStorage.removeItem('siteAuth'); location.reload(); }); }
+auth.onAuthStateChanged(user=>{
+  if(user){
+    currentUserId=user.uid;
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('userEmailDisplay').innerText=user.displayName+" - "+user.email;
+    const cs=document.getElementById('cloudStatus');
+    if(cs) cs.innerText="☁️ جاري تحميل Firebase...";
+    cloudLoad();
+  } else {
+    setTimeout(()=>{
+      if(!currentUserId && localStorage.getItem('siteAuth')!=='1'){
+        const ls=document.getElementById('lockScreen');
+        if(ls && ls.style.display==='none') return;
+        // لا نظهر اذا اكو redirect جاري
+      }
+      if(localStorage.getItem('siteAuth')==='1'){ document.getElementById('lockScreen').style.display='none'; cloudLoad(); }
+      else if(!auth.currentUser){ document.getElementById('lockScreen').style.display='flex'; }
+    },800);
+  }
+});
 // ========= اصلاح نهائي لزر Google =========
 async function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
