@@ -20,12 +20,12 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <div id="lockScreen" style="position:fixed;inset:0;background:#0f172a;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px">
   <div style="background:white;padding:30px;border-radius:20px;width:100%;max-width:350px;text-align:center">
     <h2 style="margin-bottom:8px;font-weight:bold;font-size:22px;color:#111">☁️ حدادة فراس V3.7</h2>
-    <p style="margin-bottom:15px;color:#666;font-size:13px">سجل دخولك حتى تنحفظ بياناتك</p>
+    <p style="margin-bottom:15px;color:#666;font-size:13px">سجل دخولك حتى تنحفظ بياناتك بالسحابة Firebase</p>
     <button onclick="loginGoogle()" style="width:100%;padding:12px;background:white;color:#111;border:2px solid #ddd;border-radius:10px;font-weight:bold;display:flex;align-items:center;justify-content:center;gap:8px">
       <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> تسجيل الدخول بـ Google
     </button>
     <p style="margin:12px 0;color:#aaa;font-size:11px">او</p>
-    <input id="passInput" type="password" placeholder="••••••••" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;margin-bottom:12px;text-align:center;color:#111">
+    <input id="passInput" type="password" placeholder="الرمز" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;margin-bottom:12px;text-align:center;color:#111">
     <button onclick="checkPass()" style="width:100%;padding:12px;background:#16a34a;color:white;border-radius:10px;font-weight:bold">دخول بالرمز القديم</button>
     <p id="passError" style="color:red;margin-top:10px;display:none"></p>
     <p id="passInfo" style="color:#16a34a;margin-top:10px;display:none;font-size:12px"></p>
@@ -77,6 +77,8 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 <div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10">
 <p id="confirmText" class="font-bold mb-2">متأكد؟</p><p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p>
+<div class="flex gap-2"><button id="confirmYes" class="flex-1 bg-green-500 text-black font-black py-4 rounded-xl">تأكيد</button><button onclick="closeConfirm()" class="flex-1 bg-zinc-800 py-4 <div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10">
+<p id="confirmText" class="font-bold mb-2">متأكد؟</p><p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p>
 <div class="flex gap-2"><button id="confirmYes" class="flex-1 bg-green-500 text-black font-black py-4 rounded-xl">تأكيد</button><button onclick="closeConfirm()" class="flex-1 bg-zinc-800 py-4 rounded-xl">إلغاء</button></div>
 </div></div>
 <div id="hoursModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm border border-white/10">
@@ -120,35 +122,66 @@ let currentProfileId=null,currentWeekStart=getWeekStart(new Date()),tempPhoto=nu
 const SITE_PASS = "Nawroz123@";
 let currentUserId = null;
 
-// ========= تم اصلاح زر Google =========
-function loginGoogle(){
+// ========= اصلاح نهائي لزر Google =========
+async function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   const errBox = document.getElementById('passError');
   const infoBox = document.getElementById('passInfo');
-  errBox.style.display='block';
-  errBox.style.color='#fbbf24';
-  errBox.innerText = "⏳ جاري فتح Google... انتظر";
-  infoBox.style.display='none';
-  auth.signInWithRedirect(provider).catch(e=>{
+  try{
+    errBox.style.display='block';
+    errBox.style.color='#fbbf24';
+    errBox.innerText = "⏳ جاري فتح Google...";
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    try{
+      const result = await auth.signInWithPopup(provider);
+      if(result.user){
+        infoBox.style.display='block';
+        infoBox.innerText = "✅ تم: "+result.user.email;
+        errBox.style.display='none';
+        currentUserId = result.user.uid;
+        document.getElementById('lockScreen').style.display='none';
+        document.getElementById('userEmailDisplay').innerText = result.user.displayName+" - "+result.user.email;
+        cloudLoad();
+      }
+    }catch(popupErr){
+      console.log("Popup فشل، نحول Redirect", popupErr.code);
+      if(popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user'){
+        await auth.signInWithRedirect(provider);
+      } else {
+        await auth.signInWithRedirect(provider);
+      }
+    }
+  }catch(e){
+    errBox.style.display='block';
     errBox.style.color='red';
-    errBox.innerText = "خطأ Google: " + e.code + " - " + e.message + "\nتأكد اضفت firas-haddad.github.io في Authorized domains";
+    errBox.innerText = "خطأ: "+e.code+" - "+e.message;
     console.error(e);
-  });
+  }
 }
+
 auth.getRedirectResult().then((r)=>{
   if(r && r.user){
-    document.getElementById('passInfo').style.display='block';
-    document.getElementById('passInfo').innerText = "✅ تم: "+r.user.email;
+    console.log("Redirect success", r.user.email);
+    currentUserId = r.user.uid;
+    document.getElementById('lockScreen').style.display='none';
+    const infoBox = document.getElementById('passInfo');
+    if(infoBox){ infoBox.style.display='block'; infoBox.innerText = "✅ مرحباً: "+r.user.email; }
+    document.getElementById('userEmailDisplay').innerText = r.user.displayName+" - "+r.user.email;
+    cloudLoad();
   }
 }).catch(e=>{
   const errBox = document.getElementById('passError');
-  errBox.style.display='block';
-  errBox.innerText = "خطأ Redirect: " + e.code + " - " + e.message;
+  if(errBox){
+    errBox.style.display='block';
+    errBox.innerText = "خطأ بعد الرجوع: "+e.code+" - "+e.message;
+  }
   console.error(e);
 });
 
 function logout(){ auth.signOut().then(()=>{ localStorage.removeItem('siteAuth'); location.reload(); }); }
+
 auth.onAuthStateChanged(user=>{
+  console.log("Auth state:", user? user.email : "null");
   if(user){
     currentUserId = user.uid;
     document.getElementById('lockScreen').style.display='none';
@@ -157,10 +190,29 @@ auth.onAuthStateChanged(user=>{
     if(cs) cs.innerText = "☁️ جاري تحميل Firebase...";
     cloudLoad();
   } else {
-    if(localStorage.getItem('siteAuth')==='1'){ document.getElementById('lockScreen').style.display='none'; cloudLoad(); }
-    else { document.getElementById('lockScreen').style.display='flex'; }
+    // لا نظهر القفل مباشرة - ننتظر نتيجة الـ Redirect
+    setTimeout(()=>{
+      auth.getRedirectResult().then(res=>{
+        if(!res ||!res.user){
+          if(localStorage.getItem('siteAuth')==='1'){
+            document.getElementById('lockScreen').style.display='none';
+            cloudLoad();
+          } else {
+            document.getElementById('lockScreen').style.display='flex';
+          }
+        }
+      }).catch(()=>{
+        if(localStorage.getItem('siteAuth')==='1'){
+          document.getElementById('lockScreen').style.display='none';
+          cloudLoad();
+        } else {
+          document.getElementById('lockScreen').style.display='flex';
+        }
+      });
+    }, 500);
   }
 });
+
 async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
