@@ -14,8 +14,19 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 </style>
 </head>
 <body class="pb-28">
+<div id="lockScreen" style="position:fixed;inset:0;background:#0f172a;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px">
+  <div style="background:white;padding:30px;border-radius:20px;width:100%;max-width:350px;text-align:center">
+    <h2 style="margin-bottom:15px;font-weight:bold;font-size:20px;color:#111">🔒 الموقع مقفل</h2>
+    <p style="margin-bottom:15px;color:#666">ادخل الرمز السري للدخول</p>
+    <input id="passInput" type="password" placeholder="••••••••" style="width:100%;padding:12px;border:2px solid #ddd;border-radius:10px;margin-bottom:12px;text-align:center;color:#111">
+    <button onclick="checkPass()" id="loginBtn" style="width:100%;padding:12px;background:#16a34a;color:white;border-radius:10px;font-weight:bold">دخول</button>
+    <p id="passError" style="color:red;margin-top:10px;display:none">الرمز خطأ!</p>
+    <p id="passInfo" style="color:#16a34a;margin-top:10px;display:none;font-size:12px"></p>
+  </div>
+</div>
+
 <header class="p-4 flex justify-between items-center sticky top-0 z-20 bg-[#0f0f0f]">
-<div><h1 class="font-black">حدادة فراس <span class="text-amber-400">V3.7</span></h1></div>
+<div><h1 class="font-black">حدادة فراس <span class="text-amber-400">V3.7 ☁️</span></h1></div>
 <div class="flex gap-2">
 <button onclick="openBackup()" class="glass w-10 h-10 rounded-full"><i class="fa-solid fa-floppy-disk"></i></button>
 <button onclick="openArchive()" class="glass w-10 h-10 rounded-full"><i class="fa-solid fa-box-archive"></i></button>
@@ -26,6 +37,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <div class="glass rounded-2xl p-3 text-center"><p class="text-[10px] text-zinc-400">حضور اليوم</p><p class="en-num font-black text-green-400" id="todayPresent">0</p></div>
 <div class="glass rounded-2xl p-3 text-center"><p class="text-[10px] text-zinc-400">أجور الأسبوع</p><p class="en-num font-black text-amber-400 text-[11px]" id="weekTotal">0</p></div>
 </div>
+<div class="px-4 mt-2 text-[10px] text-center opacity-50" id="cloudStatus">☁️ سحابي - متصل برمزك</div>
 <div class="px-4 mt-3 grid grid-cols-4 gap-2">
 <button onclick="markAll(1)" class="bg-zinc-800 py-3 rounded-xl text-[10px] font-bold">الكل حاضر</button>
 <button onclick="markAll(0.5)" class="bg-zinc-800 py-3 rounded-xl text-[10px] font-bold">الكل نص</button>
@@ -67,24 +79,69 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 </div></div>
 <div id="archiveModal" class="fixed inset-0 bg-black z-[55] hidden overflow-y-auto p-4"><button onclick="closeArchive()" class="w-10 h-10 glass rounded-full mb-4"><i class="fa-solid fa-xmark"></i></button><h2 class="font-black text-xl mb-4">الأرشيف - 7 أيام</h2><div id="archiveList"></div></div>
 <div id="backupModal" class="fixed inset-0 bg-black/90 z-[55] hidden"><div class="bg-zinc-900 w-full mt-auto rounded-t-[30px] p-6 absolute bottom-0">
-<h2 class="font-black mb-4">نسخ احتياطي</h2>
+<h2 class="font-black mb-4">نسخ احتياطي ☁️</h2>
+<p class="text-[11px] text-zinc-400 mb-3">البيانات تحفظ تلقائيا في السحابة برمزك. هذه نسخة احتياطية اضافية.</p>
 <button onclick="exportBackup()" class="w-full bg-white text-black font-bold py-4 rounded-xl mb-2">تصدير ملف JSON</button>
 <label class="w-full bg-zinc-800 py-4 rounded-xl flex items-center justify-center cursor-pointer mb-2">استيراد ملف<input type="file" id="importFile" hidden accept=".json" onchange="importBackup(event)"></label>
-<button onclick="saveToGoogleDrive()" class="w-full bg-[#1a73e8] text-white font-bold py-4 rounded-xl">فتح Google Drive وحفظ</button>
+<button onclick="cloudForceSave()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl mb-2">☁️ حفظ سحابي يدوي الآن</button>
 <button onclick="closeBackup()" class="w-full mt-3 bg-zinc-800 py-3 rounded-xl">إغلاق</button>
 </div></div>
 <canvas id="shareCanvas" width="1080" height="1920" class="hidden"></canvas>
+
 <script>
 let workers=JSON.parse(localStorage.getItem('firas_v3_workers')||'[]');
 let attendance=JSON.parse(localStorage.getItem('firas_v3_att')||'{}');
 let advances=JSON.parse(localStorage.getItem('firas_v3_adv')||'{}');
 let archive=JSON.parse(localStorage.getItem('firas_v3_archive')||'[]');
 let currentProfileId=null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false;
+const SITE_PASS = "Nawroz123@";
+let cloudId = null;
+function hashPass(p){let h=0;for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;}return "firas_"+Math.abs(h)+"_"+btoa(p).replace(/[^a-zA-Z0-9]/g,'').substring(0,10);}
+async function cloudLoad(){
+  if(!cloudId) return;
+  try{
+    document.getElementById('cloudStatus').innerText = "☁️ جاري تحميل السحابة...";
+    const res = await fetch(`https://keyvalue.immanuel.co/api/KeyVal/GetValue/${cloudId}`);
+    if(res.ok){
+      const txt = await res.text();
+      if(txt && txt!=="null" && txt.length>10){
+        const data = JSON.parse(decodeURIComponent(txt));
+        let d = typeof data==='string'?JSON.parse(data):data;
+        if(d.workers && d.workers.length>0){
+          if(workers.length===0 || confirm("وجدنا بيانات في السحابة ("+d.workers.length+" عامل). هل تريد تحميلها؟")){
+            workers = d.workers; attendance = d.attendance||{}; advances = d.advances||{}; archive = d.archive||[];
+            localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+            localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+            localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+            localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+            render();
+            document.getElementById('cloudStatus').innerText = "☁️ تم التحميل من السحابة ✅ "+workers.length+" عامل";
+            setTimeout(()=>{document.getElementById('cloudStatus').innerText="☁️ سحابي - متزامن";},3000);
+            return;
+          }
+        }
+      }
+    }
+    document.getElementById('cloudStatus').innerText = "☁️ سحابي - متزامن";
+  }catch(e){document.getElementById('cloudStatus').innerText = "☁️ سحابي - محلي";}
+}
+async function cloudSaveReal(){
+  if(!cloudId) return;
+  try{
+    const data = {workers, attendance, advances, archive, updated:new Date().toISOString()};
+    const jsonStr = encodeURIComponent(JSON.stringify(data));
+    await fetch(`https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${cloudId}/${jsonStr}`,{method:'POST'});
+    document.getElementById('cloudStatus').innerText = "☁️ تم الحفظ السحابي ✅ "+new Date().toLocaleTimeString('ar-IQ');
+    setTimeout(()=>{document.getElementById('cloudStatus').innerText="☁️ سحابي - متزامن";},2000);
+    localStorage.setItem('cloud_'+cloudId, JSON.stringify(data));
+  }catch(e){document.getElementById('cloudStatus').innerText = "☁️ حفظ محلي";}
+}
+function cloudForceSave(){cloudSaveReal();alert("تم الحفظ السحابي");}
 function getWeekStart(d){let dt=new Date(d);let day=dt.getDay();let diff=day===6?0:day+1;dt.setDate(dt.getDate()-diff);dt.setHours(0,0,0,0);return dt;}
 function fmt(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function en(n){return Number(n||0).toLocaleString('en-US');}
 function getWeekDays(){let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
-function save(){localStorage.setItem('firas_v3_workers',JSON.stringify(workers));localStorage.setItem('firas_v3_att',JSON.stringify(attendance));localStorage.setItem('firas_v3_adv',JSON.stringify(advances));localStorage.setItem('firas_v3_archive',JSON.stringify(archive));render();if(currentProfileId)renderProfile(currentProfileId);}
+function save(){localStorage.setItem('firas_v3_workers',JSON.stringify(workers));localStorage.setItem('firas_v3_att',JSON.stringify(attendance));localStorage.setItem('firas_v3_adv',JSON.stringify(advances));localStorage.setItem('firas_v3_archive',JSON.stringify(archive));render();if(currentProfileId)renderProfile(currentProfileId);cloudSaveReal();}
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
 function render(){
 let list=document.getElementById('workersList');list.innerHTML='';let todayStr=fmt(new Date());let present=0,weekTotal=0;let weekDays=getWeekDays();
@@ -118,7 +175,7 @@ function renderProfile(id){
 let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();
 let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
 let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;
-let html=`<div class="glass rounded-[24px] p-5 text-center"><div class="w-20 h-20 mx-auto rounded-full overflow-hidden bg-zinc-800 border-2 border-amber-400 mb-2">${w.photo?`<img src="${w.photo}" class="w-full h-full object-cover">`:`<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-user"></i></div>`}</div><h2 class="font-black text-xl">${w.name}</h2><p class="en-num text-amber-400 font-bold">${en(w.wage)} د.ع</p><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">حضور</p><p class="en-num font-black">${weekSum.toFixed(1)}/7</p></div><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">المستحق</p><p class="en-num font-black text-green-400">${en(total)}</p></div><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">الصافي</p><p class="en-num font-black text-amber-400">${en(net)}</p></div></div></div><div class="mt-4 flex justify-between items-center"><button onclick="changeWeek(-1)" class="w-9 h-9 glass rounded-full"><i class="fa-solid fa-chevron-right"></i></button><p class="en-num text-xs font-bold">${fmt(weekDays[0])} الى ${fmt(weekDays[6])}</p><button onclick="changeWeek(1)" class="w-9 h-9 glass rounded-full"><i class="fa-solid fa-chevron-left"></i></button></div><div class="glass rounded-[18px] mt-2 overflow-hidden">${weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;let fridayClass=isFriday?'bg-amber-500/15 border border-amber-500/30':'';return `<div class="p-3 border-b border-white/5 ${fridayClass}"><div class="flex justify-between items-center"><div><p class="text-xs font-bold ${isFriday?'text-amber-400':''}">${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${isFriday?'⭐':''}</p><p class="en-num text-[11px] text-zinc-400">${fmt(d)} • <span class="${isFriday?'text-amber-400 font-bold':'text-amber-400'}">${label}</span></p></div><span class="en-num text-[10px] bg-zinc-800 px-2 py-1 rounded-full">${frac>0?en(Math.round(frac*w.wage))+' د.ع':'0'}</span></div><div class="grid grid-cols-4 gap-1 mt-2"><button onclick="askSetDay('${id}','${ds}',1)" class="py-2 rounded-full text-[11px] font-bold ${frac==1?'bg-green-500 text-black':'bg-zinc-800'}">حاضر</button><button onclick="askSetDay('${id}','${ds}',0.5)" class="py-2 rounded-full text-[11px] font-bold ${frac==0.5?'bg-amber-400 text-black':'bg-zinc-800'}">نص</button><button onclick="openHours('${id}','${ds}')" class="py-2 rounded-full text-[11px] ${(frac>0&&frac<1&&frac!=0.5)?'bg-blue-500 text-white':'bg-zinc-800'}">ساعات</button><button onclick="askSetDay('${id}','${ds}',0)" class="py-2 rounded-full text-[11px] ${frac==0?'bg-red-500/20 text-red-400':'bg-zinc-800'}">غائب</button></div></div>`;}).join('')}</div><div class="glass rounded-[18px] p-4 mt-4"><p class="text-xs font-bold mb-2">السلف</p><div class="flex gap-2"><input id="advInput" type="number" placeholder="0" class="flex-1 bg-zinc-800 rounded-xl p-3 en-num outline-none"><button onclick="addAdvance('${id}')" class="bg-amber-400 text-black font-bold px-5 rounded-xl">إضافة</button></div><p class="text-[11px] text-zinc-400 mt-2">مجموع السلف: <span class="en-num">${en(adv)}</span></p></div><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="settleWeek('${id}')" class="bg-white text-black font-black py-4 rounded-xl text-sm">تصفية وتصفير</button><button onclick="sendWhatsAppImage('${id}')" class="bg-[#25D366] text-black font-black py-4 rounded-xl text-sm">إرسال كصورة</button></div><div class="grid grid-cols-1 gap-2 mt-2"><button onclick="sendWhatsApp('${id}')" class="bg-[#25D366]/20 border border-[#25D366]/30 text-[#25D366] font-bold py-4 rounded-xl text-sm">إرسال كشف مفصل واتساب</button></div><div class="mt-3 grid grid-cols-2 gap-2"><button onclick="deleteWorker('${id}')" class="bg-red-500/10 border border-red-500/30 text-red-400 font-bold py-3 rounded-xl text-xs"><i class="fa-solid fa-trash ml-1"></i> حذف العامل</button><button onclick="closeProfile()" class="bg-zinc-800 py-3 rounded-xl text-xs">إغلاق</button></div>`;
+let html=`<div class="glass rounded-[24px] p-5 text-center"><div class="w-20 h-20 mx-auto rounded-full overflow-hidden bg-zinc-800 border-2 border-amber-400 mb-2">${w.photo?`<img src="${w.photo}" class="w-full h-full object-cover">`:`<div class="w-full h-full flex items-center justify-center"><i class="fa-solid fa-user"></i></div>`}</div><h2 class="font-black text-xl">${w.name}</h2><p class="en-num text-amber-400 font-bold">${en(w.wage)} د.ع</p><div class="grid grid-cols-3 gap-2 mt-4"><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">حضور</p><p class="en-num font-black">${weekSum.toFixed(1)}</p></div><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">المستحق</p><p class="en-num font-black text-green-400">${en(total)}</p></div><div class="bg-zinc-800 rounded-xl p-2"><p class="text-[9px] text-zinc-400">الصافي</p><p class="en-num font-black text-amber-400">${en(net)}</p></div></div></div><div class="mt-4 flex justify-between items-center"><button onclick="changeWeek(-1)" class="w-9 h-9 glass rounded-full"><i class="fa-solid fa-chevron-right"></i></button><p class="en-num text-xs font-bold">${fmt(weekDays[0])} الى ${fmt(weekDays[6])}</p><button onclick="changeWeek(1)" class="w-9 h-9 glass rounded-full"><i class="fa-solid fa-chevron-left"></i></button></div><div class="glass rounded-[18px] mt-2 overflow-hidden">${weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;let fridayClass=isFriday?'bg-amber-500/15 border border-amber-500/30':'';return `<div class="p-3 border-b border-white/5 ${fridayClass}"><div class="flex justify-between items-center"><div><p class="text-xs font-bold ${isFriday?'text-amber-400':''}">${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${isFriday?'⭐':''}</p><p class="en-num text-[11px] text-zinc-400">${fmt(d)} • <span class="${isFriday?'text-amber-400 font-bold':'text-amber-400'}">${label}</span></p></div><span class="en-num text-[10px] bg-zinc-800 px-2 py-1 rounded-full">${frac>0?en(Math.round(frac*w.wage))+' د.ع':'0'}</span></div><div class="grid grid-cols-4 gap-1 mt-2"><button onclick="askSetDay('${id}','${ds}',1)" class="py-2 rounded-full text-[11px] font-bold ${frac==1?'bg-green-500 text-black':'bg-zinc-800'}">حاضر</button><button onclick="askSetDay('${id}','${ds}',0.5)" class="py-2 rounded-full text-[11px] font-bold ${frac==0.5?'bg-amber-400 text-black':'bg-zinc-800'}">نص</button><button onclick="openHours('${id}','${ds}')" class="py-2 rounded-full text-[11px] ${(frac>0&&frac<1&&frac!=0.5)?'bg-blue-500 text-white':'bg-zinc-800'}">ساعات</button><button onclick="askSetDay('${id}','${ds}',0)" class="py-2 rounded-full text-[11px] ${frac==0?'bg-red-500/20 text-red-400':'bg-zinc-800'}">غائب</button></div></div>`;}).join('')}</div><div class="glass rounded-[18px] p-4 mt-4"><p class="text-xs font-bold mb-2">السلف</p><div class="flex gap-2"><input id="advInput" type="number" placeholder="0" class="flex-1 bg-zinc-800 rounded-xl p-3 en-num outline-none"><button onclick="addAdvance('${id}')" class="bg-amber-400 text-black font-bold px-5 rounded-xl">إضافة</button></div><p class="text-[11px] text-zinc-400 mt-2">مجموع السلف: <span class="en-num">${en(adv)}</span></p></div><div class="grid grid-cols-2 gap-2 mt-4"><button onclick="settleWeek('${id}')" class="bg-white text-black font-black py-4 rounded-xl text-sm">تصفية وتصفير</button><button onclick="sendWhatsAppImage('${id}')" class="bg-[#25D366] text-black font-black py-4 rounded-xl text-sm">إرسال كصورة</button></div><div class="grid grid-cols-1 gap-2 mt-2"><button onclick="sendWhatsApp('${id}')" class="bg-[#25D366]/20 border border-[#25D366]/30 text-[#25D366] font-bold py-4 rounded-xl text-sm">إرسال كشف مفصل واتساب</button></div><div class="mt-3 grid grid-cols-2 gap-2"><button onclick="deleteWorker('${id}')" class="bg-red-500/10 border border-red-500/30 text-red-400 font-bold py-3 rounded-xl text-xs"><i class="fa-solid fa-trash ml-1"></i> حذف العامل</button><button onclick="closeProfile()" class="bg-zinc-800 py-3 rounded-xl text-xs">إغلاق</button></div>`;
 document.getElementById('profileContent').innerHTML=html;
 }
 function askSetDay(wId,date,val){askConfirm(val==1?'حاضر كامل؟':val==0.5?'نص يوم؟':'غياب؟',`التاريخ ${date}`,()=>{if(!attendance[wId])attendance[wId]={};if(val==0)delete attendance[wId][date];else attendance[wId][date]=val;save();});}
@@ -131,16 +188,44 @@ function addAdvance(id){let v=parseInt(document.getElementById('advInput').value
 function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ تفاصيل كل أيام الأسبوع في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0)return alert('لا يوجد حضور');let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
 function deleteWorker(id){askConfirm('حذف العامل نهائياً؟','',()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save();});}
 function deleteArchiveRec(id){askConfirm('حذف سجل الأرشيف؟','لا يمكن التراجع',()=>{archive=archive.filter(x=>x.id!=id);save();openArchive();});}
-function openArchive(){document.getElementById('archiveModal').style.display='block';let list=document.getElementById('archiveList');list.innerHTML=archive.length?archive.map(r=>{let daysHtml = r.daysData? r.daysData.map(d=>`<div class="flex justify-between text-[11px] py-1 border-b border-white/5"><span>${d.dayName} ${d.date} ${d.isFriday?'⭐':''}</span><span class="${d.frac>0?'text-green-400':d.isFriday?'text-amber-400':'text-zinc-500'}">${d.label} • ${en(d.amount)} د.ع</span></div>`).join('') : '';return `<div class="glass rounded-xl p-4 mb-3"><div class="flex justify-between items-start"><div><p class="font-bold">${r.workerName}</p><p class="en-num text-xs text-zinc-400">${r.weekStart} الى ${r.weekEnd} • ${r.days}/7 يوم • ${r.date}</p></div><button onclick="deleteArchiveRec('${r.id}')" class="w-8 h-8 bg-red-500/20 text-red-400 rounded-full"><i class="fa-solid fa-trash"></i></button></div><div class="mt-3 bg-black/30 rounded-xl p-3">${daysHtml || '<p class="text-xs text-zinc-500">لا توجد تفاصيل أيام (سجلات قديمة)</p>'}</div><p class="en-num text-sm mt-2">الكلي ${en(r.total)} - السلف ${en(r.adv)} - الصافي <span class="text-amber-400 font-black">${en(r.net)}</span></p></div>`;}).join(''):`<p class="text-center text-zinc-500 mt-10">لا يوجد أرشيف</p>`;}
+function openArchive(){document.getElementById('archiveModal').style.display='block';let list=document.getElementById('archiveList');list.innerHTML=archive.length?archive.map(r=>{let daysHtml = r.daysData? r.daysData.map(d=>`<div class="flex justify-between text-[11px] py-1 border-b border-white/5"><span>${d.dayName} ${d.date} ${d.isFriday?'⭐':''}</span><span class="${d.frac>0?'text-green-400':d.isFriday?'text-amber-400':'text-zinc-500'}">${d.label}</span></div>`).join('') : '';return `<div class="glass rounded-xl p-4 mb-3"><div class="flex justify-between items-start"><div><p class="font-bold">${r.workerName}</p><p class="en-num text-xs text-zinc-400">${r.weekStart} الى ${r.weekEnd} • ${r.days} يوم • ${r.date}</p></div><button onclick="deleteArchiveRec('${r.id}')" class="w-8 h-8 bg-red-500/20 text-red-400 rounded-full"><i class="fa-solid fa-trash"></i></button></div><div class="mt-3 bg-black/30 rounded-xl p-3">${daysHtml || '<p class="text-xs text-zinc-500">لا توجد تفاصيل أيام</p>'}</div><p class="en-num text-sm mt-2">الكلي ${en(r.total)} - السلف ${en(r.adv)} - الصافي <span class="text-amber-400 font-black">${en(r.net)}</span></p></div>`;}).join(''):`<p class="text-center text-zinc-500 mt-10">لا يوجد أرشيف</p>`;}
 function closeArchive(){document.getElementById('archiveModal').style.display='none';}
 function openBackup(){document.getElementById('backupModal').style.display='flex';}
 function closeBackup(){document.getElementById('backupModal').style.display='none';}
 function exportBackup(){let data={workers,attendance,advances,archive,exportDate:new Date().toISOString()};let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`firas_backup_${fmt(new Date())}.json`;a.click();URL.revokeObjectURL(url);}
 function importBackup(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{try{let data=JSON.parse(ev.target.result);if(data.workers)workers=data.workers;if(data.attendance)attendance=data.attendance;if(data.advances)advances=data.advances;if(data.archive)archive=data.archive;save();closeBackup();alert('تم الاستيراد');}catch(err){alert('ملف غير صالح');}};reader.readAsText(file);}
-function saveToGoogleDrive(){exportBackup();window.open('https://drive.google.com/drive/my-drive','_blank');}
-function sendWhatsApp(id){let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;let lines=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return `${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${ds}: ${label} - ${Math.round(frac*w.wage)} د.ع`;}).join('\n');let msg=`*كشف حساب - ${w.name}*\nالفترة: ${fmt(weekDays[0])} الى ${fmt(weekDays[6])}\nاليومية: ${w.wage}\n\n${lines}\n\nالمجموع: ${weekSum}/7 = ${total} د.ع\nالسلف: ${adv}\nالصافي: ${net} د.ع`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');}
-function sendWhatsAppImage(id){let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;let canvas=document.getElementById('shareCanvas');let ctx=canvas.getContext('2d');ctx.fillStyle='#0f0f0f';ctx.fillRect(0,0,1080,1920);ctx.fillStyle='#1a1a1a';ctx.fillRect(40,40,1000,1840);ctx.strokeStyle='#fbbf24';ctx.lineWidth=4;ctx.strokeRect(40,40,1000,1840);ctx.fillStyle='white';ctx.textAlign='center';ctx.font='bold 70px sans-serif';ctx.fillText(w.name,540,160);ctx.fillStyle='#fbbf24';ctx.font='bold 35px sans-serif';ctx.fillText(`${fmt(weekDays[0])} الى ${fmt(weekDays[6])}`,540,230);ctx.fillStyle='#a1a1aa';ctx.font='28px sans-serif';ctx.fillText(`اليومية ${en(w.wage)}`,540,280);let y=350;weekDays.forEach(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8}س`;ctx.fillStyle='#2a2a2a';ctx.fillRect(80,y-35,920,60);ctx.fillStyle=isFriday?'#fbbf24':frac>0?'#22c55e':'#71717a';ctx.font='bold 28px sans-serif';ctx.textAlign='right';ctx.fillText(`${d.toLocaleDateString('ar-IQ',{weekday:'long'})} - ${label}`,900,y);ctx.textAlign='left';ctx.fillStyle='#d4d4d8';ctx.font='24px monospace';ctx.fillText(`${ds} - ${en(Math.round(frac*w.wage))}`,90,y);y+=75;});y+=30;ctx.fillStyle='#22c55e';ctx.textAlign='center';ctx.font='bold 38px sans-serif';ctx.fillText(`المجموع: ${weekSum.toFixed(1)}/7 = ${en(total)}`,540,y);ctx.fillStyle='#fbbf24';ctx.font='bold 42px sans-serif';ctx.fillText(`الصافي: ${en(net)}`,540,y+70);canvas.toBlob(blob=>{let file=new File([blob],`${w.name}.png`,{type:'image/png'});if(navigator.share&&navigator.canShare({files:[file]})){navigator.share({files:[file]});}else{let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${w.name}.png`;a.click();}});}
+function sendWhatsApp(id){let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;let lines=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return `${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${ds}: ${label}`;}).join('\n');let msg=`*كشف حساب - ${w.name}*\nالفترة: ${fmt(weekDays[0])} الى ${fmt(weekDays[6])}\nاليومية: ${w.wage}\n\n${lines}\n\nالمجموع: ${weekSum} = ${total} د.ع\nالسلف: ${adv}\nالصافي: ${net} د.ع`;window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');}
+function sendWhatsAppImage(id){let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;let canvas=document.getElementById('shareCanvas');let ctx=canvas.getContext('2d');ctx.fillStyle='#0f0f0f';ctx.fillRect(0,0,1080,1920);ctx.fillStyle='#1a1a1a';ctx.fillRect(40,40,1000,1840);ctx.strokeStyle='#fbbf24';ctx.lineWidth=4;ctx.strokeRect(40,40,1000,1840);ctx.fillStyle='white';ctx.textAlign='center';ctx.font='bold 70px sans-serif';ctx.fillText(w.name,540,160);ctx.fillStyle='#fbbf24';ctx.font='bold 35px sans-serif';ctx.fillText(`${fmt(weekDays[0])} الى ${fmt(weekDays[6])}`,540,230);ctx.fillStyle='#a1a1aa';ctx.font='28px sans-serif';ctx.fillText(`اليومية ${en(w.wage)}`,540,280);let y=350;weekDays.forEach(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8}س`;ctx.fillStyle='#2a2a2a';ctx.fillRect(80,y-35,920,60);ctx.fillStyle=isFriday?'#fbbf24':frac>0?'#22c55e':'#71717a';ctx.font='bold 28px sans-serif';ctx.textAlign='right';ctx.fillText(`${d.toLocaleDateString('ar-IQ',{weekday:'long'})} - ${label}`,900,y);ctx.textAlign='left';ctx.fillStyle='#d4d4d8';ctx.font='24px monospace';ctx.fillText(`${ds}`,90,y);y+=75;});y+=30;ctx.fillStyle='#22c55e';ctx.textAlign='center';ctx.font='bold 38px sans-serif';ctx.fillText(`المجموع: ${weekSum.toFixed(1)} = ${en(total)}`,540,y);ctx.fillStyle='#fbbf24';ctx.font='bold 42px sans-serif';ctx.fillText(`الصافي: ${en(net)}`,540,y+70);canvas.toBlob(blob=>{let file=new File([blob],`${w.name}.png`,{type:'image/png'});if(navigator.share&&navigator.canShare({files:[file]})){navigator.share({files:[file]});}else{let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`${w.name}.png`;a.click();}});}
 render();
+</script>
+<script>
+function checkPass(){
+  const p = document.getElementById('passInput').value;
+  if(p === SITE_PASS){
+    cloudId = hashPass(p);
+    localStorage.setItem('siteAuth','1');
+    localStorage.setItem('lastPass', p);
+    document.getElementById('lockScreen').style.display='none';
+    document.getElementById('passError').style.display='none';
+    document.getElementById('passInfo').style.display='block';
+    document.getElementById('passInfo').innerText = "✅ تم الدخول - جاري مزامنة السحابة...";
+    cloudLoad();
+    cloudSaveReal();
+  } else {
+    document.getElementById('passError').style.display='block';
+    document.getElementById('passInfo').style.display='none';
+  }
+}
+if(localStorage.getItem('siteAuth') === '1'){
+  const last = localStorage.getItem('lastPass');
+  if(last){ cloudId = hashPass(last); }
+  else { cloudId = hashPass(SITE_PASS); }
+  document.getElementById('lockScreen').style.display='none';
+  setTimeout(()=>{ cloudLoad(); }, 800);
+}
+document.getElementById('passInput').addEventListener('keypress', function(e){
+  if(e.key === 'Enter') checkPass();
+});
 </script>
 </body>
 </html>
