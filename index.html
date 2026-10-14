@@ -1,3 +1,5 @@
+<!-- كود الجزء الاول - الرأس والحماية -->
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -39,9 +41,9 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <button onclick="logout()" class="glass w-10 h-10 rounded-full text-red-400"><i class="fa-solid fa-right-from-bracket"></i></button>
 </div>
 </header>
+<!-- كود الجزء الاول - الرأس والحماية -->
 
-
-
+<!-- كود الجزء الثاني - الواجهة -->
 <div class="px-4 grid grid-cols-3 gap-2 mt-2">
 <div class="glass rounded-2xl p-3 text-center"><p class="text-[10px] text-zinc-400">العمال</p><p class="en-num font-black" id="totalWorkers">0</p></div>
 <div class="glass rounded-2xl p-3 text-center"><p class="text-[10px] text-zinc-400">حضور اليوم</p><p class="en-num font-black text-green-400" id="todayPresent">0</p></div>
@@ -111,6 +113,10 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 </div></div>
 
 <canvas id="shareCanvas" width="1080" height="1920" class="hidden"></canvas>
+<!-- كود الجزء الثاني - الواجهة -->
+
+
+<!-- كود الجزء الثالث - الجافاسكربت المصلح -->
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDYUL13ThZeljnbr-Wmz8vcK9TTvOBTdaU",
@@ -157,6 +163,8 @@ auth.onAuthStateChanged(user=>{
     setTimeout(()=>{ if(localStorage.getItem('siteAuth')==='1'){ document.getElementById('lockScreen').style.display='none'; cloudLoad(); } else if(!currentUserId){ document.getElementById('lockScreen').style.display='flex'; } },600);
   }
 });
+
+// --- تم اصلاح مشكلة الرفريش هنا ---
 async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
@@ -164,20 +172,30 @@ async function cloudLoad(){
     const doc = await db.collection('firas_data').doc(currentUserId).get();
     if(doc.exists){
       const d=doc.data();
-      if(d.workers){ workers=d.workers; attendance=d.attendance||{}; advances=d.advances||{}; archive=d.archive||[]; }
+      const hasLocal = workers.length>0 || Object.keys(attendance).length>0;
+      if(!hasLocal){
+        if(d.workers){ workers=d.workers; attendance=d.attendance||{}; advances=d.advances||{}; archive=d.archive||[]; }
+      } else {
+        // عندك بيانات محلية - لا تمسح الحضور، فقط ادمج الارشيف اذا كان اطول
+        if(d.archive && d.archive.length > archive.length) archive = d.archive;
+        // لو بالسحابة اكو عمال اكثر من المحلي ادمجهم
+        if(d.workers && d.workers.length > workers.length){
+          d.workers.forEach(cw=>{ if(!workers.find(w=>w.id==cw.id)) workers.push(cw); });
+        }
+      }
       if(cs) cs.innerText="☁️ تم التحميل ✅ "+workers.length+" عامل";
+      localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+      localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+      localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+      localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
     } else { if(cs) cs.innerText="☁️ جديد - جاهز"; cloudSaveReal(); }
     render();
-  }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; }
+  }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
 }
 async function cloudSaveReal(){
   try{
     const data={workers,attendance,advances,archive,updated:new Date().toISOString(),email:auth.currentUser?auth.currentUser.email:""};
     if(currentUserId){ await db.collection('firas_data').doc(currentUserId).set(data,{merge:true}); const cs=document.getElementById('cloudStatus'); if(cs){cs.innerText="☁️ تم الحفظ ✅ "+new Date().toLocaleTimeString('ar-IQ'); setTimeout(()=>{cs.innerText="☁️ Firebase متزامن ✅";},2000);} }
-    localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-    localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-    localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
-    localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
   }catch(e){ console.error(e); }
 }
 function getWeekStart(d){let dt=new Date(d);let day=dt.getDay();let diff=day===6?0:day+1;dt.setDate(dt.getDate()-diff);dt.setHours(0,0,0,0);return dt;}
@@ -185,7 +203,17 @@ function fmt(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'
 function en(n){return Number(n||0).toLocaleString('en-US');}
 function formatDays(n){ if(!n) return "0 أيام"; let v = Math.round(n*10)/10; return (v%1===0? v.toFixed(0) : v.toFixed(1)) + " أيام"; }
 function getWeekDays(){let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
-function save(){localStorage.setItem('firas_v3_workers',JSON.stringify(workers));localStorage.setItem('firas_v3_att',JSON.stringify(attendance));localStorage.setItem('firas_v3_adv',JSON.stringify(advances));localStorage.setItem('firas_v3_archive',JSON.stringify(archive));render();if(currentProfileId)renderProfile(currentProfileId);cloudSaveReal();}
+// --- تم اصلاح save هنا - حفظ فوري محلي وتأخير سحابي ---
+function save(){
+  localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+  localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+  localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+  localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+  render();
+  if(currentProfileId)renderProfile(currentProfileId);
+  clearTimeout(window._cloudTimer);
+  window._cloudTimer=setTimeout(()=>{ cloudSaveReal(); },900);
+}
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
 function render(){
 let list=document.getElementById('workersList');list.innerHTML='';let todayStr=fmt(new Date());let present=0,weekTotal=0;let weekDays=getWeekDays();
@@ -232,35 +260,19 @@ function addAdvance(id){let v=parseInt(document.getElementById('advInput').value
 function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0)return alert('لا يوجد حضور');let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
 function settleAll(){
   let weekDays=getWeekDays();
-  let hasAny = workers.some(w=>{
-    let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
-    return sum>0;
-  });
+  let hasAny = workers.some(w=>{ let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return sum>0; });
   if(!hasAny) return alert('لا يوجد حضور هذا الاسبوع للتصفية');
   askConfirm(`تصفية الكل؟ ${workers.length} عامل`,'راح ينحفظ كلشي بالارشيف ويتصفر الاسبوع',()=>{
-    let weekDays=getWeekDays();
-    let now=fmt(new Date());
-    let added=0;
+    let now=fmt(new Date()); let added=0;
     workers.forEach(w=>{
       let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
       if(weekSum==0) return;
-      let total=Math.round(weekSum*w.wage);
-      let adv=advances[w.id]||0;
-      let daysData=weekDays.map(d=>{
-        let ds=fmt(d);
-        let frac=attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0);
-        let isFriday=d.getDay()===5;
-        let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;
-        return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};
-      });
+      let total=Math.round(weekSum*w.wage); let adv=advances[w.id]||0;
+      let daysData=weekDays.map(d=>{ let ds=fmt(d); let frac=attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0); let isFriday=d.getDay()===5; let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`; return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday}; });
       let rec={id:Date.now().toString()+"_"+w.id, workerId:w.id, workerName:w.name, weekStart:fmt(weekDays[0]), weekEnd:fmt(weekDays[6]), days:weekSum, wage:w.wage, total, adv, net:total-adv, date:now, daysData};
-      archive.unshift(rec);
-      added++;
+      archive.unshift(rec); added++;
     });
-    workers.forEach(w=>{
-      weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[w.id]) delete attendance[w.id][ds]; });
-      advances[w.id]=0;
-    });
+    workers.forEach(w=>{ weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[w.id]) delete attendance[w.id][ds]; }); advances[w.id]=0; });
     save();
     alert(`تمت تصفية ${added} عامل بنجاح ✅`);
     openArchive();
@@ -278,7 +290,7 @@ function sendWhatsApp(id){
   let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();
   let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
   let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;
-  let lines=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return `${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${ds}: ${label}`;}).join('\n');
+  let lines=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return `${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${ds}: ${label}`;}).join('\n');
   let msg=`*كشف حساب - ${w.name}*\nالفترة: ${fmt(weekDays[0])} الى ${fmt(weekDays[6])}\nاليومية: ${w.wage}\nعدد الأيام: ${formatDays(weekSum)}\n\n${lines}\n\nالمجموع: ${total} د.ع\nالسلف: ${adv} د.ع\nالصافي: ${net} د.ع`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
 }
