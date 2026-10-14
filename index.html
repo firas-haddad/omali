@@ -56,6 +56,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 </div>
 
 <button onclick="sendAllWhatsApp()" class="mx-4 mt-3 w-[calc(100%-32px)] bg-[#25D366] text-black font-black py-4 rounded-xl text-[12px]"><i class="fa-brands fa-whatsapp ml-2"></i> ارسال حساب كل العمال واتساب</button>
+<button onclick="settleAll()" class="mx-4 mt-2 w-[calc(100%-32px)] bg-white text-black font-black py-4 rounded-xl text-[12px]"><i class="fa-solid fa-broom ml-2"></i> تصفية حساب الكل (تصفير الاسبوع)</button>
 
 <div id="workersList" class="px-4 mt-4 space-y-2"></div>
 <button onclick="openAddWorker()" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-amber-400 text-black font-black px-8 py-4 rounded-full z-30">+ عامل جديد</button>
@@ -111,7 +112,6 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 <canvas id="shareCanvas" width="1080" height="1920" class="hidden"></canvas>
 <script>
-// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDYUL13ThZeljnbr-Wmz8vcK9TTvOBTdaU",
   authDomain: "firas-hadada.firebaseapp.com",
@@ -157,7 +157,6 @@ auth.onAuthStateChanged(user=>{
     setTimeout(()=>{ if(localStorage.getItem('siteAuth')==='1'){ document.getElementById('lockScreen').style.display='none'; cloudLoad(); } else if(!currentUserId){ document.getElementById('lockScreen').style.display='flex'; } },600);
   }
 });
-
 async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
@@ -230,7 +229,43 @@ function setHours(h){if(isBulkHours){let frac=h/8;let today=fmt(new Date());work
 function setCustomHours(){let h=parseFloat(document.getElementById('customHours').value);if(!h)return;setHours(h);}
 function changeWeek(d){let nd=new Date(currentWeekStart);nd.setDate(nd.getDate()+(d*7));currentWeekStart=nd;save();}
 function addAdvance(id){let v=parseInt(document.getElementById('advInput').value);if(!v)return;advances[id]=(advances[id]||0)+v;document.getElementById('advInput').value='';save();}
-function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0)return alert('لا يوجد حضور');let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][ds]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
+function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0)return alert('لا يوجد حضور');let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
+function settleAll(){
+  let weekDays=getWeekDays();
+  let hasAny = workers.some(w=>{
+    let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
+    return sum>0;
+  });
+  if(!hasAny) return alert('لا يوجد حضور هذا الاسبوع للتصفية');
+  askConfirm(`تصفية الكل؟ ${workers.length} عامل`,'راح ينحفظ كلشي بالارشيف ويتصفر الاسبوع',()=>{
+    let weekDays=getWeekDays();
+    let now=fmt(new Date());
+    let added=0;
+    workers.forEach(w=>{
+      let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
+      if(weekSum==0) return;
+      let total=Math.round(weekSum*w.wage);
+      let adv=advances[w.id]||0;
+      let daysData=weekDays.map(d=>{
+        let ds=fmt(d);
+        let frac=attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0);
+        let isFriday=d.getDay()===5;
+        let label=isFriday?'عطلة - الجمعة':frac==0?'غائب':frac==1?'حاضر':frac==0.5?'نص يوم':`${frac*8} ساعات`;
+        return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};
+      });
+      let rec={id:Date.now().toString()+"_"+w.id, workerId:w.id, workerName:w.name, weekStart:fmt(weekDays[0]), weekEnd:fmt(weekDays[6]), days:weekSum, wage:w.wage, total, adv, net:total-adv, date:now, daysData};
+      archive.unshift(rec);
+      added++;
+    });
+    workers.forEach(w=>{
+      weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[w.id]) delete attendance[w.id][ds]; });
+      advances[w.id]=0;
+    });
+    save();
+    alert(`تمت تصفية ${added} عامل بنجاح ✅`);
+    openArchive();
+  });
+}
 function deleteWorker(id){askConfirm('حذف العامل نهائياً؟','',()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save();});}
 function deleteArchiveRec(id){askConfirm('حذف سجل الأرشيف؟','لا يمكن التراجع',()=>{archive=archive.filter(x=>x.id!=id);save();openArchive();});}
 function openArchive(){document.getElementById('archiveModal').style.display='block';let list=document.getElementById('archiveList');list.innerHTML=archive.length?archive.map(r=>{let daysHtml = r.daysData? r.daysData.map(d=>`<div class="flex justify-between text-[11px] py-1 border-b border-white/5"><span>${d.dayName} ${d.date} ${d.isFriday?'⭐':''}</span><span class="${d.frac>0?'text-green-400':d.isFriday?'text-amber-400':'text-zinc-500'}">${d.label}</span></div>`).join('') : '';return `<div class="glass rounded-xl p-4 mb-3"><div class="flex justify-between items-start"><div><p class="font-bold">${r.workerName}</p><p class="en-num text-xs text-zinc-400">${r.weekStart} الى ${r.weekEnd} • ${formatDays(r.days)} • ${r.date}</p></div><button onclick="deleteArchiveRec('${r.id}')" class="w-8 h-8 bg-red-500/20 text-red-400 rounded-full"><i class="fa-solid fa-trash"></i></button></div><div class="mt-3 bg-black/30 rounded-xl p-3">${daysHtml}</div><p class="en-num text-sm mt-2">الكلي ${en(r.total)} - السلف ${en(r.adv)} - الصافي <span class="text-amber-400 font-black">${en(r.net)}</span></p></div>`;}).join(''):`<p class="text-center text-zinc-500 mt-10">لا يوجد أرشيف</p>`;}
