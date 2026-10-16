@@ -203,7 +203,6 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 
 <!-- كود الجزء الثالث - الجافاسكربت المصلح -->
-
 <script>
 (function(){
   const btn = document.getElementById('addWorkerBtn');
@@ -269,6 +268,17 @@ function playTone(name){
 }
 function haptic(name='light'){ playTone(name); }
 
+function showToast(msg, isError=false){
+  let old=document.getElementById('customToast');
+  if(old) old.remove();
+  let t=document.createElement('div');
+  t.id='customToast';
+  t.style.cssText=`position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:${isError?'#ef4444':'#22c55e'};color:${isError?'white':'black'};font-weight:900;padding:14px 24px;border-radius:50px;z-index:999999;box-shadow:0 10px 30px rgba(0,0,0,0.6);font-size:13px;`;
+  t.innerText=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ if(t) t.remove(); },3500);
+}
+
 async function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('email'); provider.addScope('profile');
@@ -293,22 +303,42 @@ async function loginGoogle(){
   }
 }
 auth.getRedirectResult().then((r)=>{ if(r && r.user){ currentUserId=r.user.uid; document.getElementById('lockScreen').style.display='none'; document.getElementById('userEmailDisplay').innerText=r.user.displayName+" - "+r.user.email; cloudLoad(); }}).catch(()=>{});
-function logout(){ auth.signOut().then(()=>{ location.reload(); }); }
+
+function logout(){
+  localStorage.removeItem('firas_last_uid');
+  auth.signOut().then(()=>{ location.reload(); });
+}
+
 auth.onAuthStateChanged(user=>{
   if(user){
+    const lastUid = localStorage.getItem('firas_last_uid');
+    if(lastUid && lastUid!== user.uid){
+      workers=[]; attendance={}; advances={}; archive=[];
+      localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+      localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+      localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+      localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+      render();
+    }
+    localStorage.setItem('firas_last_uid', user.uid);
     currentUserId=user.uid;
     document.getElementById('lockScreen').style.display='none';
     document.getElementById('userEmailDisplay').innerText=user.displayName+" - "+user.email;
-    const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ جاري تحميل Firebase V4.0...";
+    const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ جاري تحميل بياناتك...";
     cloudLoad();
-  } else { document.getElementById('lockScreen').style.display='flex'; }
+  } else {
+    document.getElementById('lockScreen').style.display='flex';
+  }
 });
+
 async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText="☁️ سجل بـ Google"; render(); return; }
-    const workersCol = db.collection('firas_data').doc(currentUserId).collection('workers');
+    const parentRef = db.collection('firas_data').doc(currentUserId);
+    const workersCol = parentRef.collection('workers');
     const snap = await workersCol.get();
+
     if(!snap.empty){
       let newWorkers=[], newAtt={}, newAdv={};
       snap.forEach(doc=>{
@@ -318,15 +348,24 @@ async function cloudLoad(){
         newAdv[doc.id]=d.advance||0;
       });
       workers=newWorkers; attendance=newAtt; advances=newAdv;
-      const metaDoc = await db.collection('firas_data').doc(currentUserId).get();
-      if(metaDoc.exists && metaDoc.data().archive) archive=metaDoc.data().archive;
-      if(cs) cs.innerText="☁️ V4.0 شارد ✅ "+workers.length+" عامل";
+      const metaDoc = await parentRef.get();
+      if(metaDoc.exists && metaDoc.data().archive) archive=metaDoc.data().archive; else archive=[];
+      if(cs) cs.innerText="☁️ مرحبا "+(auth.currentUser.displayName||"")+" ✅ "+workers.length+" عامل";
     } else {
-      const doc = await db.collection('firas_data').doc(currentUserId).get();
-      if(doc.exists && doc.data().workers){
+      const doc = await parentRef.get();
+      if(doc.exists && doc.data().workers && doc.data().workers.length>0){
         const d=doc.data();
-        if(d.workers.length>0){ workers=d.workers; attendance=d.attendance||{}; advances=d.advances||{}; archive=d.archive||[]; await cloudSaveReal(); }
-      } else { if(cs) cs.innerText="☁️ جديد - جاهز"; cloudSaveReal(); }
+        workers=d.workers; attendance=d.attendance||{}; advances=d.advances||{}; archive=d.archive||[];
+        await cloudSaveReal();
+      } else {
+        workers=[]; attendance={}; advances={}; archive=[];
+        localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+        localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+        localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+        localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+        if(cs) cs.innerText="☁️ حساب جديد - جاهز للبدء ✨";
+        await parentRef.set({archive:[], created:new Date().toISOString(), email:auth.currentUser.email}, {merge:true});
+      }
     }
     localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
     localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
@@ -335,6 +374,7 @@ async function cloudLoad(){
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
 }
+
 async function cloudSaveReal(){
   try{
     if(!currentUserId) return;
@@ -397,7 +437,7 @@ document.getElementById('confirmYes').onclick=()=>{if(pendingAction)pendingActio
 function openAddWorker(){document.getElementById('addModal').style.display='flex';document.getElementById('modalTitle').innerText='إضافة عامل جديد';document.getElementById('editId').value='';document.getElementById('wName').value='';document.getElementById('wWage').value='';tempPhoto=null;document.getElementById('photoPreview').classList.add('hidden');document.getElementById('photoIcon').classList.remove('hidden');}
 function closeAdd(){document.getElementById('addModal').style.display='none';}
 function previewPhoto(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{let img=new Image();img.onload=()=>{let canvas=document.createElement('canvas');let size=400;canvas.width=size;canvas.height=size;let ctx=canvas.getContext('2d');let min=Math.min(img.width,img.height);let sx=(img.width-min)/2,sy=(img.height-min)/2;ctx.drawImage(img,sx,sy,min,min,0,0,size,size);tempPhoto=canvas.toDataURL('image/jpeg',0.75);document.getElementById('photoPreview').src=tempPhoto;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');};img.src=ev.target.result;};reader.readAsDataURL(file);}
-function saveWorker(){let n=document.getElementById('wName').value.trim(),w=parseInt(document.getElementById('wWage').value),editId=document.getElementById('editId').value;if(!n||!w)return alert('اكمل البيانات');if(editId){let worker=workers.find(x=>x.id==editId);worker.name=n;worker.wage=w;if(tempPhoto)worker.photo=tempPhoto;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();}
+function saveWorker(){let n=document.getElementById('wName').value.trim(),w=parseInt(document.getElementById('wWage').value),editId=document.getElementById('editId').value;if(!n||!w){showToast('اكمل البيانات',true);return;}if(editId){let worker=workers.find(x=>x.id==editId);worker.name=n;worker.wage=w;if(tempPhoto)worker.photo=tempPhoto;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();}
 function editCurrentWorker(){let w=workers.find(x=>x.id==currentProfileId);if(!w)return;document.getElementById('modalTitle').innerText='تعديل العامل';document.getElementById('editId').value=w.id;document.getElementById('wName').value=w.name;document.getElementById('wWage').value=w.wage;tempPhoto=w.photo||null;if(w.photo){document.getElementById('photoPreview').src=w.photo;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');}document.getElementById('addModal').style.display='flex';}
 function openProfile(id){currentProfileId=id;document.getElementById('profileModal').style.display='block';renderProfile(id);}
 function closeProfile(){document.getElementById('profileModal').style.display='none';currentProfileId=null;}
@@ -425,11 +465,11 @@ function setHours(h){
 function setCustomHours(){ let h=parseFloat(document.getElementById('customHours').value); if(!h || h<=0) return; if(h>24) return; setHours(h); }
 function changeWeek(d){let nd=new Date(currentWeekStart);nd.setDate(nd.getDate()+(d*7));currentWeekStart=nd;save();}
 function addAdvance(id){let v=parseInt(document.getElementById('advInput').value);if(!v)return;advances[id]=(advances[id]||0)+v;document.getElementById('advInput').value='';save();}
-function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0)return;let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
+function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0){showToast('لا يوجد حضور',true);return;}let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
 function settleAll(){
   let weekDays=getWeekDays();
   let hasAny = workers.some(w=>{ let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return sum>0; });
-  if(!hasAny) return;
+  if(!hasAny){showToast('لا يوجد حضور للتصفية',true); return;}
   askConfirm(`تصفية الكل؟ ${workers.length} عامل`,'راح ينحفظ كلشي بالارشيف ويتصفر الاسبوع',()=>{
     let now=fmt(new Date()); let added=0;
     workers.forEach(w=>{
@@ -441,7 +481,7 @@ function settleAll(){
       archive.unshift(rec); added++;
     });
     workers.forEach(w=>{ weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[w.id]) delete attendance[w.id][ds]; }); advances[w.id]=0; });
-    save(); openArchive();
+    save(); showToast(`تمت تصفية ${added} عامل ✅`); openArchive();
   });
 }
 function deleteWorker(id){askConfirm('حذف العامل نهائياً؟','سيتم حذفه من السحابة ايضا',async()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save(); try{ if(currentUserId) await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete(); }catch(e){} });}
@@ -489,7 +529,7 @@ function sendWhatsAppImage(id){
   });
 }
 function sendAllWhatsApp(){
-  if(workers.length===0) return;
+  if(workers.length===0){showToast('لا يوجد عمال',true); return;}
   let weekDays=getWeekDays();
   let header=`*كشف حساب كل العمال*\nالفترة: ${fmt(weekDays[0])} الى ${fmt(weekDays[6])}\nالتاريخ: ${fmt(new Date())}\n${'='.repeat(25)}\n\n`;
   let body=workers.map(w=>{
@@ -506,33 +546,20 @@ function sendAllWhatsApp(){
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
-// ========== نظام ملاحظات نهائي - بدون alert وبدون انبوكس ==========
-function showToast(msg, isError=false){
-  let old=document.getElementById('customToast');
-  if(old) old.remove();
-  let t=document.createElement('div');
-  t.id='customToast';
-  t.style.cssText=`position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:${isError?'#ef4444':'#22c55e'};color:${isError?'white':'black'};font-weight:900;padding:14px 24px;border-radius:50px;z-index:999999;box-shadow:0 10px 30px rgba(0,0,0,0.6);font-size:13px;white-space:nowrap;`;
-  t.innerText=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>{ if(t) t.remove(); },3500);
-}
-
+// ========== ملاحظات - يرسل لايميلك فقط ==========
 function openFeedbackModal(){ document.getElementById('feedbackModal').style.display='flex'; haptic('light'); }
 function closeFeedbackModal(){
   document.getElementById('feedbackModal').style.display='none';
   const t=document.getElementById('fbText'); if(t) t.value='';
   const m=document.getElementById('feedbackModalInner');
-  if(m) m.innerHTML = m.getAttribute('data-original') || m.innerHTML;
+  if(m && m.getAttribute('data-original')) m.innerHTML=m.getAttribute('data-original');
 }
 
 async function sendFeedback(){
-  const typeEl = document.getElementById('fbType');
-  const textEl = document.getElementById('fbText');
-  const type = typeEl? typeEl.value : 'ملاحظة';
-  const text = textEl? textEl.value.trim() : '';
+  const type = document.getElementById('fbType').value;
+  const text = document.getElementById('fbText').value.trim();
   if(!text){ showToast('⚠️ اكتب ملاحظتك', true); return; }
-  if(text.length<5){ showToast('⚠️ الملاحظة قصيرة جدا', true); return; }
+  if(text.length<5){ showToast('⚠️ قصيرة جدا', true); return; }
 
   const modalInner = document.getElementById('feedbackModalInner');
   if(!modalInner.getAttribute('data-original')) modalInner.setAttribute('data-original', modalInner.innerHTML);
@@ -577,7 +604,7 @@ async function sendFeedback(){
 render();
 </script>
 
-<!-- مودال ملاحظات فقط -->
+<!-- مودال ملاحظات فقط - بدون انبوكس -->
 <div id="feedbackModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;padding:20px">
   <div id="feedbackModalInner" style="background:#1e1e1e;width:100%;max-width:400px;border-radius:20px;padding:20px;border:1px solid #333">
     <h3 style="font-weight:900;margin-bottom:6px;font-size:16px">📩 ملاحظات / إبلاغ</h3>
