@@ -203,7 +203,6 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 
 <!-- كود الجزء الثالث - الجافاسكربت المصلح -->
-
 <script>
 (function(){
   const btn = document.getElementById('addWorkerBtn');
@@ -278,6 +277,51 @@ function showToast(msg, isError=false){
   document.body.appendChild(t);
   setTimeout(()=>{ if(t) t.remove(); },3500);
 }
+
+// === نظام التحذير 50-60 عامل ===
+function checkStorageLimit(newPhoto){
+  let workersWithPhoto = workers.filter(w=>w.photo).length;
+  let totalSizeKB = 0;
+  try{ totalSizeKB = (localStorage.getItem('firas_v3_workers')||'').length / 1024; }catch(e){ totalSizeKB = 5000; }
+  if(newPhoto && workersWithPhoto >= 55){
+    showToast('⚠️ وصلت 55 عامل بصورة - اضف بدون صورة للحفاظ على السرعة', true);
+    return false;
+  }
+  if(totalSizeKB > 4500){
+    showToast('⚠️ الذاكرة امتلت - احذف صور قديمة او اضف بدون صورة', true);
+    return false;
+  }
+  return true;
+}
+function showStorageBanner(){
+  let banner = document.getElementById('storageBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id='storageBanner';
+    banner.style.cssText='display:none;margin-bottom:12px;padding:10px 14px;border-radius:12px;font-size:12px;font-weight:900;text-align:center';
+    let list = document.getElementById('workersList');
+    if(list && list.parentNode) list.parentNode.prepend(banner);
+  }
+  if(!banner) return;
+  let count = workers.length;
+  let withPhoto = workers.filter(w=>w.photo).length;
+  if(count >= 45){
+    banner.style.display='block';
+    if(withPhoto >= 50 || count >= 60){
+      banner.style.background='#ef4444'; banner.style.color='white';
+      banner.innerText=`⚠️ ${count} عامل (${withPhoto} بصورة) - وصلت للحد! اضف الجدد بدون صور`;
+    }else if(count >= 50){
+      banner.style.background='#fbbf24'; banner.style.color='black';
+      banner.innerText=`⚠️ ${count} عامل - اقتربت من الحد (60). يفضل بدون صور`;
+    }else{
+      banner.style.background='#22c55e'; banner.style.color='black';
+      banner.innerText=`✅ ${count} عامل (${withPhoto} بصورة) - الوضع جيد - الحد الآمن 60`;
+    }
+  }else{
+    banner.style.display='none';
+  }
+}
+
 async function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('email'); provider.addScope('profile');
@@ -332,8 +376,6 @@ async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText="☁️ سجل بـ Google"; render(); return; }
-
-    // === اصلاح مشكلة الريفريش الفوري للكل ===
     const lastSave = parseInt(localStorage.getItem('firas_v3_last_save') || '0');
     const isQuickRefresh = (Date.now() - lastSave) < 120000;
     if(isQuickRefresh && workers.length > 0){
@@ -343,7 +385,6 @@ async function cloudLoad(){
       if(cs) cs.innerText="☁️ تمت المزامنة ✅";
       return;
     }
-
     const parentRef = db.collection('firas_data').doc(currentUserId);
     const workersCol = parentRef.collection('workers');
     const snap = await workersCol.get();
@@ -437,6 +478,7 @@ list.appendChild(div);
 document.getElementById('totalWorkers').innerText=workers.length;
 document.getElementById('todayPresent').innerText=present;
 document.getElementById('weekTotal').innerText=en(Math.round(weekTotal));
+showStorageBanner();
 }
 function quickToggle(id){
   let today=fmt(new Date());
@@ -464,7 +506,16 @@ document.getElementById('confirmYes').onclick=()=>{if(pendingAction)pendingActio
 function openAddWorker(){document.getElementById('addModal').style.display='flex';document.getElementById('modalTitle').innerText='إضافة عامل جديد';document.getElementById('editId').value='';document.getElementById('wName').value='';document.getElementById('wWage').value='';tempPhoto=null;document.getElementById('photoPreview').classList.add('hidden');document.getElementById('photoIcon').classList.remove('hidden');}
 function closeAdd(){document.getElementById('addModal').style.display='none';}
 function previewPhoto(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{let img=new Image();img.onload=()=>{let canvas=document.createElement('canvas');let size=400;canvas.width=size;canvas.height=size;let ctx=canvas.getContext('2d');let min=Math.min(img.width,img.height);let sx=(img.width-min)/2,sy=(img.height-min)/2;ctx.drawImage(img,sx,sy,min,min,0,0,size,size);tempPhoto=canvas.toDataURL('image/jpeg',0.75);document.getElementById('photoPreview').src=tempPhoto;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');};img.src=ev.target.result;};reader.readAsDataURL(file);}
-function saveWorker(){let n=document.getElementById('wName').value.trim(),w=parseInt(document.getElementById('wWage').value),editId=document.getElementById('editId').value;if(!n||!w){showToast('اكمل البيانات',true);return;}if(editId){let worker=workers.find(x=>x.id==editId);worker.name=n;worker.wage=w;if(tempPhoto)worker.photo=tempPhoto;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();}
+function saveWorker(){
+  let n=document.getElementById('wName').value.trim(),w=parseInt(document.getElementById('wWage').value),editId=document.getElementById('editId').value;
+  if(!n||!w){showToast('اكمل البيانات',true);return;}
+  let isNewPhoto = tempPhoto && !editId;
+  let isEditWithNewPhoto = tempPhoto && editId;
+  if(isNewPhoto || isEditWithNewPhoto){
+    if(!checkStorageLimit(true)) return;
+  }
+  if(editId){let worker=workers.find(x=>x.id==editId);worker.name=n;worker.wage=w;if(tempPhoto)worker.photo=tempPhoto;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();
+}
 function editCurrentWorker(){let w=workers.find(x=>x.id==currentProfileId);if(!w)return;document.getElementById('modalTitle').innerText='تعديل العامل';document.getElementById('editId').value=w.id;document.getElementById('wName').value=w.name;document.getElementById('wWage').value=w.wage;tempPhoto=w.photo||null;if(w.photo){document.getElementById('photoPreview').src=w.photo;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');}document.getElementById('addModal').style.display='flex';}
 function openProfile(id){currentProfileId=id;document.getElementById('profileModal').style.display='block';renderProfile(id);}
 function closeProfile(){document.getElementById('profileModal').style.display='none';currentProfileId=null;}
@@ -627,7 +678,6 @@ async function sendFeedback(){
   }
 }
 
-// حفظ اضافي قبل الريفريش
 window.addEventListener('beforeunload', function(){
   localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
   localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
