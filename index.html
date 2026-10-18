@@ -203,6 +203,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 
 <!-- كود الجزء الثالث - الجافاسكربت المصلح -->
+
 <script>
 (function(){
   const btn = document.getElementById('addWorkerBtn');
@@ -278,7 +279,6 @@ function showToast(msg, isError=false){
   setTimeout(()=>{ if(t) t.remove(); },3500);
 }
 
-// === نظام التحذير 50-60 عامل ===
 function checkStorageLimit(newPhoto){
   let workersWithPhoto = workers.filter(w=>w.photo).length;
   let totalSizeKB = 0;
@@ -305,7 +305,7 @@ function showStorageBanner(){
   if(!banner) return;
   let count = workers.length;
   let withPhoto = workers.filter(w=>w.photo).length;
-  if(count >= 45){
+  if(count >= 50){
     banner.style.display='block';
     if(withPhoto >= 50 || count >= 60){
       banner.style.background='#ef4444'; banner.style.color='white';
@@ -313,9 +313,6 @@ function showStorageBanner(){
     }else if(count >= 50){
       banner.style.background='#fbbf24'; banner.style.color='black';
       banner.innerText=`⚠️ ${count} عامل - اقتربت من الحد (60). يفضل بدون صور`;
-    }else{
-      banner.style.background='#22c55e'; banner.style.color='black';
-      banner.innerText=`✅ ${count} عامل (${withPhoto} بصورة) - الوضع جيد - الحد الآمن 60`;
     }
   }else{
     banner.style.display='none';
@@ -422,6 +419,23 @@ async function cloudLoad(){
     localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
     localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
     localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+    
+    // تنظيف تلقائي لعمال التجربة
+    let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
+    if(toDelete.length>0){
+      workers = workers.filter(w=> !toDelete.includes(w.id));
+      toDelete.forEach(id=>{ delete attendance[id]; delete advances[id]; });
+      localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+      localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+      localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+      try{
+        for(let id of toDelete){
+          await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete();
+        }
+      }catch(e){}
+      showToast('تم حذف '+toDelete.length+' عامل تجربة تلقائيا ✅');
+    }
+
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
 }
