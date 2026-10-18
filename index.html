@@ -203,6 +203,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 
 <!-- كود الجزء الثالث - الجافاسكربت المصلح -->
+
 <script>
 (function(){
   const btn = document.getElementById('addWorkerBtn');
@@ -267,7 +268,6 @@ function playTone(name){
   }catch(e){}
 }
 function haptic(name='light'){ playTone(name); }
-
 function showToast(msg, isError=false){
   let old=document.getElementById('customToast');
   if(old) old.remove();
@@ -278,7 +278,6 @@ function showToast(msg, isError=false){
   document.body.appendChild(t);
   setTimeout(()=>{ if(t) t.remove(); },3500);
 }
-
 async function loginGoogle(){
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('email'); provider.addScope('profile');
@@ -303,12 +302,10 @@ async function loginGoogle(){
   }
 }
 auth.getRedirectResult().then((r)=>{ if(r && r.user){ currentUserId=r.user.uid; document.getElementById('lockScreen').style.display='none'; document.getElementById('userEmailDisplay').innerText=r.user.displayName+" - "+r.user.email; cloudLoad(); }}).catch(()=>{});
-
 function logout(){
   localStorage.removeItem('firas_last_uid');
   auth.signOut().then(()=>{ location.reload(); });
 }
-
 auth.onAuthStateChanged(user=>{
   if(user){
     const lastUid = localStorage.getItem('firas_last_uid');
@@ -335,10 +332,21 @@ async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText="☁️ سجل بـ Google"; render(); return; }
+
+    // === اصلاح مشكلة الريفريش الفوري للكل ===
+    const lastSave = parseInt(localStorage.getItem('firas_v3_last_save') || '0');
+    const isQuickRefresh = (Date.now() - lastSave) < 120000;
+    if(isQuickRefresh && workers.length > 0){
+      if(cs) cs.innerText="☁️ حفظ محلي - جاري المزامنة...";
+      render();
+      await cloudSaveReal();
+      if(cs) cs.innerText="☁️ تمت المزامنة ✅";
+      return;
+    }
+
     const parentRef = db.collection('firas_data').doc(currentUserId);
     const workersCol = parentRef.collection('workers');
     const snap = await workersCol.get();
-
     if(!snap.empty){
       let newWorkers=[], newAtt={}, newAdv={};
       snap.forEach(doc=>{
@@ -358,7 +366,9 @@ async function cloudLoad(){
         workers=d.workers; attendance=d.attendance||{}; advances=d.advances||{}; archive=d.archive||[];
         await cloudSaveReal();
       } else {
-        workers=[]; attendance={}; advances={}; archive=[];
+        if(workers.length === 0){
+          workers=[]; attendance={}; advances={}; archive=[];
+        }
         localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
         localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
         localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
@@ -374,8 +384,6 @@ async function cloudLoad(){
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
 }
-
-// === تم اصلاحها - حفظ فوري وحذف صحيح ===
 async function cloudSaveReal(){
   try{
     if(!currentUserId) return;
@@ -390,14 +398,12 @@ async function cloudSaveReal(){
     const cs=document.getElementById('cloudStatus'); if(cs){cs.innerText="☁️ تم الحفظ ✅ "+new Date().toLocaleTimeString('ar-IQ'); setTimeout(()=>{cs.innerText="☁️ Firebase V4.0 متزامن ✅";},2000);}
   }catch(e){ console.error(e); }
 }
-
 function getWeekStart(d){let dt=new Date(d);let day=dt.getDay();let diff=day===6?0:day+1;dt.setDate(dt.getDate()-diff);dt.setHours(0,0,0,0);return dt;}
 function fmt(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function en(n){return Number(n||0).toLocaleString('en-US');}
 function formatDays(n){ if(!n) return "0 أيام"; let v = Math.round(n*10)/10; return (v%1===0? v.toFixed(0) : v.toFixed(1)) + " أيام"; }
 function getWeekDays(){let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
 
-// === تم اصلاحها - حفظ فوري بدون تأخير ===
 function save(){
   localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
   localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
@@ -408,7 +414,6 @@ function save(){
   if(currentProfileId)renderProfile(currentProfileId);
   cloudSaveReal();
 }
-
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
 function getDayStatusLabel(frac, isFriday){
   if(isFriday && frac===0) return 'عطلة - الجمعة';
@@ -433,8 +438,6 @@ document.getElementById('totalWorkers').innerText=workers.length;
 document.getElementById('todayPresent').innerText=present;
 document.getElementById('weekTotal').innerText=en(Math.round(weekTotal));
 }
-
-// === تم اصلاحها - مشكلة فراس ===
 function quickToggle(id){
   let today=fmt(new Date());
   if(!attendance[id]) attendance[id]={};
@@ -453,7 +456,6 @@ function quickToggle(id){
     });
   }
 }
-
 function markAll(val){askConfirm(val==1?'حضور الكل اليوم؟':val==0.5?'نص يوم للكل؟':'غياب الكل؟',`التاريخ ${fmt(new Date())} - ${workers.length} عامل`,()=>{let today=fmt(new Date());workers.forEach(w=>{if(!attendance[w.id])attendance[w.id]={};if(val===0)delete attendance[w.id][today];else attendance[w.id][today]=val;});save();});}
 function markAllHours(){isBulkHours=true;isExtraMode=false;document.getElementById('hoursModal').style.display='flex';}
 function askConfirm(t,s,a){document.getElementById('confirmText').innerText=t;document.getElementById('confirmSub').innerText=s||'';pendingAction=a;document.getElementById('confirmModal').style.display='flex';}
@@ -577,7 +579,6 @@ function sendAllWhatsApp(){
   let msg=header+body+footer;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
 }
-
 function openFeedbackModal(){ document.getElementById('feedbackModal').style.display='flex'; haptic('light'); }
 function closeFeedbackModal(){
   document.getElementById('feedbackModal').style.display='none';
@@ -585,7 +586,6 @@ function closeFeedbackModal(){
   const m=document.getElementById('feedbackModalInner');
   if(m && m.getAttribute('data-original')) m.innerHTML=m.getAttribute('data-original');
 }
-
 async function sendFeedback(){
   const type = document.getElementById('fbType').value;
   const text = document.getElementById('fbText').value.trim();
@@ -626,6 +626,15 @@ async function sendFeedback(){
     showToast('❌ خطأ: '+e.message, true);
   }
 }
+
+// حفظ اضافي قبل الريفريش
+window.addEventListener('beforeunload', function(){
+  localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
+  localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
+  localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+  localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+  localStorage.setItem('firas_v3_last_save', Date.now().toString());
+});
 
 render();
 </script>
