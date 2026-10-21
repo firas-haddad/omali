@@ -1,8 +1,13 @@
 <!-- كود الجزء الاول - الرأس والحماية -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<head>  
 <meta charset="UTF-8">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a3d62">
+  
+  
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مقاولاتي - نظام إدارة العمال والمقاولات</title>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -719,5 +724,12 @@ render();
     </div>
   </div>
 </div>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+  
 </body>
 </html>
