@@ -9,7 +9,7 @@
   
   
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مقاولاتي - نظام إدارة العمال والمقاولات</title>
+<title>عمالي - نظام إدارة العمال والمقاولات</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -36,13 +36,13 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
   <div style="position:sticky;top:0;z-index:20;background:rgba(8,10,18,0.85);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,0.06);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
     <div style="display:flex;align-items:center;gap:10px">
       <div style="width:40px;height:40px;background:linear-gradient(135deg,#fde68a,#f59e0b);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(245,158,11,0.3)"><i class="fa-solid fa-building-circle-check" style="color:#111;font-size:18px"></i></div>
-      <div><div style="display:flex;align-items:center;gap:6px"><p style="font-weight:900;font-size:14px;line-height:1">مقاولاتي</p><span style="background:#fbbf24;color:#111;font-size:8px;font-weight:900;padding:2px 6px;border-radius:6px">V4.0 ☁️</span></div><p style="font-size:9px;color:#9ca3af">لإدارة جميع المقاولات</p></div>
+      <div><div style="display:flex;align-items:center;gap:6px"><p style="font-weight:900;font-size:14px;line-height:1">عمالي</p><span style="background:#fbbf24;color:#111;font-size:8px;font-weight:900;padding:2px 6px;border-radius:6px">V4.0 ☁️</span></div><p style="font-size:9px;color:#9ca3af">لإدارة جميع المقاولات</p></div>
     </div>
     <button onclick="loginGoogle()" class="btn-pro" style="background:white;color:#111;padding:8px 14px;border-radius:20px;font-weight:800;font-size:11px">تسجيل دخول</button>
   </div>
 
   <div style="padding:28px 20px 10px;text-align:center;max-width:600px;margin:0 auto">
-    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);padding:6px 14px;border-radius:30px;font-size:11px;color:#fbbf24;font-weight:700"><span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block"></span> يعمل الآن • يثق به 500+ مقاول</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);padding:6px 14px;border-radius:30px;font-size:11px;color:#fbbf24;font-weight:700"><span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block"></span> يعمل الآن • يثق به 00+ مقاول</div>
     <h1 style="font-size:34px;font-weight:900;line-height:1.15;margin-top:18px">إدارة عمالك<br><span style="background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">صارت أسهل من قبل</span></h1>
     <p style="color:#a1a1aa;font-size:13px;line-height:1.7;margin-top:14px">نظام متكامل لكل أنواع المقاولات: بناء، حدادة، نجارة، كهرباء، صحيات، ديكور. سجل الحضور، احسب الأجور والسلف والساعات، وارسل كشف حساب واتساب. كلشي محفوظ بالسحابة وآمن.</p>
     
@@ -60,14 +60,14 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(59,130,246,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-shield-halved" style="color:#3b82f6"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">سحابي معزول</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">كل مقاول يشوف عماله فقط</p></div>
   </div>
 
-  <div style="text-align:center;padding:20px 20px 40px;max-width:600px;margin:0 auto"><p style="color:#52525b;font-size:10px">© 2026 مقاولاتي V4.0 - جميع البيانات مشفرة ومحمية</p></div>
+  <div style="text-align:center;padding:20px 20px 40px;max-width:600px;margin:0 auto"><p style="color:#52525b;font-size:10px">© 2026 عمالي 4.0 - جميع البيانات مشفرة ومحمية</p></div>
   </div>
 </div>
 
 <header class="p-4 flex justify-between items-center sticky top-0 z-20 bg-[#0f0f0f]/90 backdrop-blur-xl">
 <div style="display:flex;align-items:center;gap:10px">
   <div style="width:40px;height:40px;background:linear-gradient(135deg,#fde68a,#f59e0b);border-radius:12px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-building-circle-check" style="color:#111"></i></div>
-  <div><h1 class="font-black" style="font-size:15px;line-height:1.1">مقاولاتي <span style="background:#fbbf24;color:#111;font-size:9px;font-weight:900;padding:2px 6px;border-radius:6px;margin-right:4px">V4.0</span><br><span id="userEmailDisplay" style="font-size:10px;color:#888;font-weight:400"></span></h1></div>
+  <div><h1 class="font-black" style="font-size:15px;line-height:1.1">عمالي <span style="background:#fbbf24;color:#111;font-size:9px;font-weight:900;padding:2px 6px;border-radius:6px;margin-right:4px">V4.0</span><br><span id="userEmailDisplay" style="font-size:10px;color:#888;font-weight:400"></span></h1></div>
 </div>
 <div class="flex gap-2">
 <button onclick="haptic('light');openBackup()" class="btn-pro glass w-10 h-10 rounded-full"><i class="fa-solid fa-floppy-disk"></i></button>
@@ -677,7 +677,7 @@ async function sendFeedback(){
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        _subject: `📩 بلاغ جديد [${type}] - مقاولاتي`,
+        _subject: `📩 بلاغ جديد [${type}] - عمالي`,
         _captcha: "false",
         _template: "table",
         "نوع البلاغ": type,
