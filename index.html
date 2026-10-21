@@ -593,7 +593,7 @@ function sendWhatsApp(id){
   let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let net=total-adv;
   let lines=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return `${d.toLocaleDateString('ar-IQ',{weekday:'long'})} ${ds}: ${label}`;}).join('\n');
   let msg=`*كشف حساب - ${w.name}*\nالفترة: ${fmt(weekDays[0])} الى ${fmt(weekDays[6])}\nاليومية: ${w.wage}\nعدد الأيام: ${formatDays(weekSum)}\n\n${lines}\n\nالمجموع: ${total} د.ع\nالسلف: ${adv} د.ع\nالصافي: ${net} د.ع`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
 }
 function sendWhatsAppImage(id){
   let w=workers.find(x=>x.id==id); let weekDays=getWeekDays();
