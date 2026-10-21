@@ -3,13 +3,10 @@
 <html lang="ar" dir="rtl">
 <head>  
 <meta charset="UTF-8">
-
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a3d62">
-  
-  
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>عمالي - نظام إدارة العمال والمقاولات</title>
+<title>عمالي - نظام إدارة العمال</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -29,27 +26,26 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 </head>
 <body class="pb-28">
 
-<!-- صفحة تسجيل الدخول V5.0 - عام لكل المقاولات -->
 <div id="lockScreen" style="position:fixed;inset:0;background:#080a12;z-index:99999;overflow-y:auto">
   <div style="position:fixed;inset:0;pointer-events:none"><div style="position:absolute;top:-100px;right:-100px;width:400px;height:400px;background:rgba(251,191,36,0.15);border-radius:999px;filter:blur(80px)"></div><div style="position:absolute;bottom:10%;left:-100px;width:350px;height:350px;background:rgba(59,130,246,0.12);border-radius:999px;filter:blur(80px)"></div></div>
   <div style="position:relative">
   <div style="position:sticky;top:0;z-index:20;background:rgba(8,10,18,0.85);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,0.06);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
     <div style="display:flex;align-items:center;gap:10px">
       <div style="width:40px;height:40px;background:linear-gradient(135deg,#fde68a,#f59e0b);border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(245,158,11,0.3)"><i class="fa-solid fa-building-circle-check" style="color:#111;font-size:18px"></i></div>
-      <div><div style="display:flex;align-items:center;gap:6px"><p style="font-weight:900;font-size:14px;line-height:1">عمالي</p><span style="background:#fbbf24;color:#111;font-size:8px;font-weight:900;padding:2px 6px;border-radius:6px">V4.0 ☁️</span></div><p style="font-size:9px;color:#9ca3af">لإدارة جميع المقاولات</p></div>
+      <div><div style="display:flex;align-items:center;gap:6px"><p style="font-weight:900;font-size:14px;line-height:1">عمالي</p><span style="background:#fbbf24;color:#111;font-size:8px;font-weight:900;padding:2px 6px;border-radius:6px">V4.0 ☁️</span></div><p style="font-size:9px;color:#9ca3af">لإدارة جميع العمال</p></div>
     </div>
     <button onclick="loginGoogle()" class="btn-pro" style="background:white;color:#111;padding:8px 14px;border-radius:20px;font-weight:800;font-size:11px">تسجيل دخول</button>
   </div>
 
   <div style="padding:28px 20px 10px;text-align:center;max-width:600px;margin:0 auto">
-    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);padding:6px 14px;border-radius:30px;font-size:11px;color:#fbbf24;font-weight:700"><span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block"></span> يعمل الآن • يثق به 500+ مقاول</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.25);padding:6px 14px;border-radius:30px;font-size:11px;color:#fbbf24;font-weight:700"><span style="width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block"></span> يعمل الآن • يثق به 500+ عامل</div>
     <h1 style="font-size:34px;font-weight:900;line-height:1.15;margin-top:18px">إدارة عمالك<br><span style="background:linear-gradient(135deg,#fde68a,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent">صارت أسهل من قبل</span></h1>
-    <p style="color:#a1a1aa;font-size:13px;line-height:1.7;margin-top:14px">نظام متكامل لكل أنواع المقاولات: بناء، حدادة، نجارة، كهرباء، صحيات، ديكور. سجل الحضور، احسب الأجور والسلف والساعات، وارسل كشف حساب واتساب. كلشي محفوظ بالسحابة وآمن.</p>
+    <p style="color:#a1a1aa;font-size:13px;line-height:1.7;margin-top:14px">نظام متكامل لكل أنواع العمال: بناء، حدادة، نجارة، كهرباء، صحيات، ديكور. سجل الحضور، احسب الأجور والسلف والساعات، وارسل كشف حساب واتساب. كلشي محفوظ بالسحابة وآمن.</p>
     
     <div style="margin-top:22px;background:rgba(17,19,31,0.9);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:18px">
       <button onclick="haptic('medium');loginGoogle()" class="btn-pro" style="width:100%;background:white;color:#111;padding:15px;border-radius:14px;font-weight:900;font-size:14px;display:flex;align-items:center;justify-content:center;gap:10px"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20"> إنشاء حساب جديد - مجانا</button>
       <button onclick="haptic('light');loginGoogle()" class="btn-pro" style="width:100%;margin-top:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:white;padding:13px;border-radius:14px;font-weight:800;font-size:13px">عندي حساب - تسجيل دخول</button>
-      <div style="display:flex;gap:12px;justify-content:center;margin-top:12px;color:#6b7280;font-size:10px"><span>✓ مجاني</span><span>✓ لكل المقاولات</span><span>✓ بدون بطاقة</span></div>
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:12px;color:#6b7280;font-size:10px"><span>✓ مجاني</span><span>✓ لكل العمال</span><span>✓ بدون بطاقة</span></div>
     </div>
   </div>
 
@@ -57,7 +53,7 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(34,197,94,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-user-check" style="color:#22c55e"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">حضور ذكي</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">حاضر، غائب، نص يوم، ساعات مخصصة</p></div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(251,191,36,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-calculator" style="color:#fbbf24"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">حساب تلقائي</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">اليومية + الإضافي - السلف = الصافي</p></div>
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(37,211,102,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:18px"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">كشف واتساب</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">ارسل الحساب كصورة احترافية</p></div>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(59,130,246,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-shield-halved" style="color:#3b82f6"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">سحابي معزول</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">كل مقاول يشوف عماله فقط</p></div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:18px;padding:14px"><div style="width:36px;height:36px;background:rgba(59,130,246,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fa-solid fa-shield-halved" style="color:#3b82f6"></i></div><p style="font-weight:800;font-size:12px;margin-top:8px">سحابي معزول</p><p style="color:#9ca3af;font-size:10px;margin-top:4px;line-height:1.5">كل مستخدم يشوف عماله فقط</p></div>
   </div>
 
   <div style="text-align:center;padding:20px 20px 40px;max-width:600px;margin:0 auto"><p style="color:#52525b;font-size:10px">© 2026 عمالي 4.0 - جميع البيانات مشفرة ومحمية</p></div>
@@ -72,7 +68,6 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <div class="flex gap-2">
 <button onclick="haptic('light');openBackup()" class="btn-pro glass w-10 h-10 rounded-full"><i class="fa-solid fa-floppy-disk"></i></button>
 <button onclick="haptic('light');openArchive()" class="btn-pro glass w-10 h-10 rounded-full"><i class="fa-solid fa-box-archive"></i></button>
-<!-- زر الادمن - يظهر فقط لحسابك انت مع عداد -->
 <button id="adminInboxBtn" onclick="haptic('light');openAdminFeedback()" class="btn-pro glass w-10 h-10 rounded-full relative" style="border-color:#fbbf24;display:none">
   <i class="fa-solid fa-inbox" style="color:#fbbf24"></i>
   <span id="fbBadge" style="display:none;position:absolute;top:-6px;right:-6px;background:#ef4444;color:white;font-size:10px;font-weight:900;min-width:20px;height:20px;padding:0 5px;border-radius:20px;align-items:center;justify-content:center;border:2px solid #0f0f0f"><span id="fbBadgeNum">0</span></span>
@@ -163,10 +158,8 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 
 <div id="workersList" class="px-4 mt-4 space-y-3 pb-28"></div>
 
-<!-- زر إضافة عامل -->
 <button onclick="haptic('medium');openAddWorker()" id="addWorkerBtn" class="btn-pro btn-add-worker bg-gradient-to-br from-amber-300 to-amber-500 text-black font-black px-10 py-4 rounded-full shadow-2xl">+ عامل جديد</button>
 
-<!-- زر ملاحظات / إبلاغ عن مشكلة - يظهر للكل -->
 <button onclick="haptic('light');openFeedbackModal()" id="feedbackFloat" class="btn-pro">
   <i class="fa-solid fa-comment-dots"></i> ملاحظات / بلاغ
 </button>
@@ -175,7 +168,6 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 <div id="addModal" class="fixed inset-0 bg-black/90 z-[60] hidden"><div class="bg-zinc-900 w-full mt-auto rounded-t-[30px] p-6 absolute bottom-0 border-t border-white/10"><h2 id="modalTitle" class="font-black mb-4">إضافة عامل</h2><label class="w-24 h-24 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden mx-auto mb-4 border-2 border-dashed border-zinc-600 cursor-pointer"><input type="file" id="photoInput" hidden accept="image/*" onchange="previewPhoto(event)"><img id="photoPreview" class="w-full h-full object-cover hidden"><i id="photoIcon" class="fa-solid fa-camera"></i></label><input id="wName" placeholder="اسم العامل" class="w-full bg-zinc-800 rounded-xl p-4 mb-3 outline-none"><input id="wWage" type="number" placeholder="اليومية 50000" class="w-full bg-zinc-800 rounded-xl p-4 mb-4 outline-none en-num"><input type="hidden" id="editId"><div class="flex gap-2"><button onclick="haptic('medium');saveWorker()" class="btn-pro flex-1 bg-gradient-to-br from-amber-300 to-amber-500 text-black font-black py-4 rounded-xl">حفظ</button><button onclick="haptic('light');closeAdd()" class="btn-pro flex-1 bg-zinc-800 py-4 rounded-xl">إلغاء</button></div></div></div>
 <div id="confirmModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6"><div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm text-center border border-white/10"><p id="confirmText" class="font-bold mb-2">متأكد؟</p><p id="confirmSub" class="text-xs text-zinc-400 mb-6"></p><div class="flex gap-2"><button id="confirmYes" class="btn-pro flex-1 bg-gradient-to-br from-green-400 to-green-600 text-black font-black py-4 rounded-xl">تأكيد</button><button onclick="haptic('light');closeConfirm()" class="btn-pro flex-1 bg-zinc-800 py-4 rounded-xl">إلغاء</button></div></div></div>
 
-<!-- مودال الساعات - معدل لغير محدود V5 -->
 <div id="hoursModal" class="fixed inset-0 bg-black/80 z-[70] hidden items-center justify-center p-6" style="display:none;">
   <div class="bg-zinc-900 rounded-[24px] p-6 w-full max-w-sm border border-white/10">
     <h3 class="font-black mb-1 text-center text-lg">كم ساعة؟</h3>
@@ -425,8 +417,7 @@ async function cloudLoad(){
     localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
     localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
     
-    // تنظيف تلقائي لعمال التجربة
-    let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
+    let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('عامل تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
     if(toDelete.length>0){
       workers = workers.filter(w=> !toDelete.includes(w.id));
       toDelete.forEach(id=>{ delete attendance[id]; delete advances[id]; });
@@ -668,7 +659,7 @@ async function sendFeedback(){
     await db.collection('site_feedbacks').add({
       type, text,
       user: auth.currentUser? auth.currentUser.email : 'زائر',
-      name: auth.currentUser? auth.currentUser.displayName : 'مقاول',
+      name: auth.currentUser? auth.currentUser.displayName : 'عامل',
       uid: currentUserId || 'guest',
       date: new Date().toISOString(),
       dateStr: new Date().toLocaleString('ar-IQ')
@@ -682,8 +673,8 @@ async function sendFeedback(){
         _template: "table",
         "نوع البلاغ": type,
         "نص الملاحظة": text,
-        "ايميل المقاول": auth.currentUser? auth.currentUser.email : 'زائر غير مسجل',
-        "اسم المقاول": auth.currentUser? auth.currentUser.displayName : 'مقاول',
+        "ايميل العامل": auth.currentUser? auth.currentUser.email : 'زائر غير مسجل',
+        "اسم العامل": auth.currentUser? auth.currentUser.displayName : 'عامل',
         "التاريخ": new Date().toLocaleString('ar-IQ'),
         "الموقع": "firas-hadada.web.app"
       })
@@ -709,27 +700,4 @@ render();
 </script>
 
 <div id="feedbackModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;padding:20px">
-  <div id="feedbackModalInner" style="background:#1e1e1e;width:100%;max-width:400px;border-radius:20px;padding:20px;border:1px solid #333">
-    <h3 style="font-weight:900;margin-bottom:6px;font-size:16px">📩 ملاحظات / إبلاغ</h3>
-    <p style="font-size:11px;color:#999;margin-bottom:12px">توصل للادمن مباشرة على الايميل</p>
-    <select id="fbType" style="width:100%;background:#2a2a2a;border-radius:12px;padding:12px;margin-bottom:10px;color:white;outline:none">
-      <option value="اقتراح">💡 اقتراح لتحسين الموقع</option>
-      <option value="مشكلة">🐛 إبلاغ عن مشكلة</option>
-      <option value="اخرى">📝 ملاحظة عامة</option>
-    </select>
-    <textarea id="fbText" placeholder="اكتب ملاحظتك هنا..." style="width:100%;height:120px;background:#2a2a2a;border-radius:12px;padding:12px;color:white;outline:none;resize:none"></textarea>
-    <div style="display:flex;gap:10px;margin-top:12px">
-      <button onclick="sendFeedback()" class="btn-pro" style="flex:1;background:#fbbf24;color:black;font-weight:900;padding:12px;border-radius:12px">إرسال ✅</button>
-      <button onclick="closeFeedbackModal()" class="btn-pro" style="flex:1;background:#2a2a2a;color:white;padding:12px;border-radius:12px">إلغاء</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
-  
-</body>
-</html>
+  <div id="feedbackModalInner" style="background:#1e1e1e;width:100%;max-width:400px;border-radius:20px;padding
