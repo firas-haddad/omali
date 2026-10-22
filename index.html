@@ -509,10 +509,10 @@ function ensureSearchBar(){
   if(!list || !list.parentNode) return;
   let wrap = document.createElement('div');
   wrap.id = 'searchWrap';
-  wrap.style.cssText = 'margin:12px 6px 8px 6px;position:sticky;top:0;z-index:40;background:#0a0a0a;padding-bottom:6px;';
+  wrap.style.cssText = 'margin:12px 6px 8px 6px;position:sticky;top:8px;z-index:50;background:#0a0a0a;padding-bottom:6px;';
   wrap.innerHTML = `<div style="display:flex;align-items:center;gap:12px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:18px;padding:13px 16px;">
     <i class="fa-solid fa-magnifying-glass" style="color:#71717a"></i>
-    <input id="workerSearch" oninput="render()" placeholder="🔍 بحث باسم العامل..." style="flex:1;background:transparent;color:white;outline:none;border:none;font-size:14px" autocomplete="off">
+    <input id="workerSearch" oninput="render()" onfocus="setTimeout(()=>{window.scrollTo(0,0)},100)" placeholder="🔍 بحث باسم العامل..." style="flex:1;background:transparent;color:white;outline:none;border:none;font-size:14px" autocomplete="off">
     <span id="clearSearchX" onclick="document.getElementById('workerSearch').value=''; render(); document.getElementById('workerSearch').focus();" style="display:none;color:#71717a;cursor:pointer"><i class="fa-solid fa-xmark"></i></span>
   </div>`;
   list.parentNode.insertBefore(wrap, list);
@@ -540,7 +540,6 @@ if(searchTerm){
   if(whiteBtn) whiteBtn.style.display='none';
   let cx = document.getElementById('clearSearchX');
   if(cx) cx.style.display='block';
-  setTimeout(()=>{ if(list) list.scrollIntoView({behavior:'smooth', block:'start'}); }, 80);
 }else{
   if(addBtn) addBtn.style.display='';
   if(fbBtn) fbBtn.style.display='';
@@ -863,65 +862,63 @@ window.addEventListener('beforeunload', function(){
   localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
   localStorage.setItem('firas_v3_last_save', Date.now().toString());
 });
+
+// ======= كود الخروج والبحث المصحح نهائي =======
 let lastBackPress = 0;
+function closeAnyModal(){
+  let cm=document.getElementById('confirmModal');
+  if(cm && cm.style.display=='flex'){ cm.style.display='none'; pendingAction=null; return true; }
+  let hm=document.getElementById('hoursModal');
+  if(hm && hm.style.display=='flex'){ hm.style.display='none'; hoursTarget=null; isBulkHours=false; isExtraMode=false; let c=document.getElementById('customHours'); if(c) c.value=''; return true; }
+  let pm=document.getElementById('profileModal');
+  if(pm && pm.style.display=='block'){ pm.style.display='none'; currentProfileId=null; return true; }
+  let am=document.getElementById('archiveModal');
+  if(am && (am.style.display=='block' || am.style.display=='flex')){ am.style.display='none'; return true; }
+  let ad=document.getElementById('addModal');
+  if(ad && ad.style.display=='flex'){ ad.style.display='none'; return true; }
+  let bm=document.getElementById('backupModal');
+  if(bm && bm.style.display=='flex'){ bm.style.display='none'; return true; }
+  let wh=document.getElementById('workHoursModal');
+  if(wh && wh.style.display=='flex'){ wh.style.display='none'; return true; }
+  let fm=document.getElementById('feedbackModal');
+  if(fm && (fm.style.display=='flex' || !fm.classList.contains('hidden'))){ fm.classList.add('hidden'); fm.style.display='none'; const t=document.getElementById('fbText'); if(t) t.value=''; return true; }
+  return false;
+}
+function handleExit(){
+  let now = Date.now();
+  if(now - lastBackPress < 2000){
+    try{ 
+      if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
+        window.Capacitor.Plugins.App.exitApp(); 
+      }else if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App){
+        Capacitor.Plugins.App.exitApp();
+      }else{
+        history.go(-2);
+      }
+    }catch(e){}
+    return true;
+  }else{
+    lastBackPress = now;
+    showToast('اضغط رجوع مرة ثانية للخروج ↩️');
+    return false;
+  }
+}
 (function(){
   try{ 
     history.replaceState({modal:'home'}, '', location.pathname);
     history.pushState({modal:'home'}, '', location.pathname);
   }catch(e){}
+  if(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App){
+    Capacitor.Plugins.App.addListener('backButton', ()=>{
+      if(closeAnyModal()) return;
+      if(!handleExit()){
+        try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){}
+      }
+    });
+  }
   window.addEventListener('popstate', function(e){
-    let cm=document.getElementById('confirmModal');
-    if(cm && cm.style.display=='flex'){ 
-      cm.style.display='none'; 
-      pendingAction=null;
-      return;
-    }
-    let hm=document.getElementById('hoursModal');
-    if(hm && hm.style.display=='flex'){ 
-      hm.style.display='none'; 
-      hoursTarget=null; isBulkHours=false; isExtraMode=false;
-      let c=document.getElementById('customHours'); if(c) c.value='';
-      return;
-    }
-    let pm=document.getElementById('profileModal');
-    if(pm && pm.style.display=='block'){ 
-      pm.style.display='none'; 
-      currentProfileId=null;
-      return;
-    }
-    let am=document.getElementById('archiveModal');
-    if(am && (am.style.display=='block' || am.style.display=='flex')){ 
-      am.style.display='none';
-      return;
-    }
-    let ad=document.getElementById('addModal');
-    if(ad && ad.style.display=='flex'){ 
-      ad.style.display='none';
-      return;
-    }
-    let bm=document.getElementById('backupModal');
-    if(bm && bm.style.display=='flex'){ 
-      bm.style.display='none';
-      return;
-    }
-    let wh=document.getElementById('workHoursModal');
-    if(wh && wh.style.display=='flex'){ 
-      wh.style.display='none';
-      return;
-    }
-    let fm=document.getElementById('feedbackModal');
-    if(fm && (fm.style.display=='flex' || !fm.classList.contains('hidden'))){ 
-      fm.classList.add('hidden'); 
-      fm.style.display='none';
-      const t=document.getElementById('fbText'); if(t) t.value='';
-      return;
-    }
-    let now = Date.now();
-    if(now - lastBackPress < 2000){
-      return;
-    }else{
-      lastBackPress = now;
-      showToast('اضغط رجوع مرة ثانية للخروج ↩️');
+    if(closeAnyModal()) return;
+    if(!handleExit()){
       try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){}
     }
   });
