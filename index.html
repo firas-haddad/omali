@@ -219,7 +219,6 @@ let archive=JSON.parse(localStorage.getItem('firas_v3_archive')||'[]');
 let currentProfileId=null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
 let currentUserId = null;
 let defaultWorkHours = parseInt(localStorage.getItem('firas_work_hours')||'8');
-
 let _pAudio=null;
 const SOUNDS = {
   present: {f1:600,f2:950,dur:0.10,type:'sine',vib:18},
@@ -319,12 +318,12 @@ function changeWorkHours(){
     modal.style.display='flex';
     document.getElementById('workHoursInput').value=defaultWorkHours;
   }
-  try{ history.pushState({modal:'workHours'}, '', '#workHours'); }catch(e){}
+  pushModal('workHours');
 }
 function closeWorkHoursModal(){ 
   let m=document.getElementById('workHoursModal'); 
   if(m) m.style.display='none'; 
-  try{ if(history.state && history.state.modal=='workHours') history.back(); }catch(e){}
+  if(history.state && history.state.modal=='workHours'){ history.back(); } 
 }
 function saveWorkHours(){
   let input=document.getElementById('workHoursInput');
@@ -590,16 +589,36 @@ function quickToggle(id){
   }
 }
 function markAll(val){askConfirm(val==1?'حضور الكل اليوم؟':val==0.5?'نص يوم للكل؟':'غياب الكل؟',`التاريخ ${fmt(new Date())} - ${workers.length} عامل`,()=>{let today=fmt(new Date());workers.forEach(w=>{if(!attendance[w.id])attendance[w.id]={};if(val===0)delete attendance[w.id][today];else attendance[w.id][today]=val;});save();});}
-function markAllHours(){isBulkHours=true;isExtraMode=false;document.getElementById('hoursModal').style.display='flex'; try{history.pushState({modal:'hours'}, '', '#hours-bulk');}catch(e){}}
+function markAllHours(){isBulkHours=true;isExtraMode=false;document.getElementById('hoursModal').style.display='flex'; pushModal('hours-bulk');}
 function pushModal(name){ try{ history.pushState({modal:name}, '', '#'+name); }catch(e){} }
-function askConfirm(t,s,a){document.getElementById('confirmText').innerText=t;document.getElementById('confirmSub').innerText=s||'';pendingAction=a;document.getElementById('confirmModal').style.display='flex'; pushModal('confirm');}
+function askConfirm(t,s,a){
+  document.getElementById('confirmText').innerText=t;
+  document.getElementById('confirmSub').innerText=s||'';
+  pendingAction=a;
+  document.getElementById('confirmModal').style.display='flex'; 
+  pushModal('confirm');
+}
 function closeConfirm(){
   let m=document.getElementById('confirmModal');
-  if(m) m.style.display='none';
+  if(!m) return;
+  if(m.style.display=='flex' && history.state && history.state.modal=='confirm'){
+    history.back();
+    return;
+  }
+  m.style.display='none';
   pendingAction=null;
-  try{ if(history.state && history.state.modal=='confirm') history.back(); }catch(e){}
 }
-document.getElementById('confirmYes').onclick=()=>{if(pendingAction)pendingAction();closeConfirm();};
+document.getElementById('confirmYes').onclick=()=>{
+  let action = pendingAction;
+  pendingAction=null;
+  if(history.state && history.state.modal=='confirm'){
+    history.back();
+  }else{
+    let m=document.getElementById('confirmModal');
+    if(m) m.style.display='none';
+  }
+  if(action) setTimeout(action, 80);
+};
 function openAddWorker(){
   document.getElementById('addModal').style.display='flex';
   document.getElementById('modalTitle').innerText='إضافة عامل جديد';
@@ -610,7 +629,7 @@ function openAddWorker(){
 function closeAdd(){
   let m=document.getElementById('addModal');
   if(m) m.style.display='none';
-  try{ if(history.state && history.state.modal=='add') history.back(); }catch(e){}
+  if(history.state && history.state.modal=='add'){ history.back(); }
 }
 function previewPhoto(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{let img=new Image();img.onload=()=>{let canvas=document.createElement('canvas');let size=400;canvas.width=size;canvas.height=size;let ctx=canvas.getContext('2d');let min=Math.min(img.width,img.height);let sx=(img.width-min)/2,sy=(img.height-min)/2;ctx.drawImage(img,sx,sy,min,min,0,0,size,size);tempPhoto=canvas.toDataURL('image/jpeg',0.75);document.getElementById('photoPreview').src=tempPhoto;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');};img.src=ev.target.result;};reader.readAsDataURL(file);}
 function saveWorker(){
@@ -642,7 +661,7 @@ function closeProfile(){
   let pm=document.getElementById('profileModal');
   if(pm) pm.style.display='none';
   currentProfileId=null;
-  try{ if(history.state && String(history.state.modal).startsWith('profile-')) history.back(); }catch(e){}
+  if(history.state && String(history.state.modal).startsWith('profile-')){ history.back(); }
 }
 function renderProfile(id){
 let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();
@@ -663,9 +682,16 @@ function openHours(wId,date){hoursTarget={wId,date};isBulkHours=false;isExtraMod
 function openExtraHours(wId,date){hoursTarget={wId,date};isBulkHours=false;isExtraMode=true;document.getElementById('hoursModal').style.display='flex'; pushModal('extra-'+date);}
 function clearExtra(wId,date){askConfirm('حذف الاضافي؟',`يرجع يوم واحد فقط (${defaultWorkHours}س)`,()=>{if(!attendance[wId])return;attendance[wId][date]=1;save();});}
 function closeHours(){
-  document.getElementById('hoursModal').style.display='none';
-  hoursTarget=null;isBulkHours=false;isExtraMode=false;document.getElementById('customHours').value='';
-  try{ if(history.state && (String(history.state.modal).startsWith('hours-') || String(history.state.modal).startsWith('extra-') || history.state.modal=='hours')) history.back(); }catch(e){}
+  let m=document.getElementById('hoursModal');
+  if(m && m.style.display=='flex'){
+    if(history.state && (String(history.state.modal).startsWith('hours-') || String(history.state.modal).startsWith('extra-') || history.state.modal=='hours-bulk')){
+      history.back();
+      return;
+    }
+  }
+  if(m) m.style.display='none';
+  hoursTarget=null;isBulkHours=false;isExtraMode=false;
+  let c=document.getElementById('customHours'); if(c) c.value='';
 }
 function setHours(h){
   if(isBulkHours){ let frac=h/defaultWorkHours; let today=fmt(new Date()); workers.forEach(w=>{if(!attendance[w.id])attendance[w.id]={};attendance[w.id][today]=frac;}); closeHours();save();return; }
@@ -709,9 +735,9 @@ function settleAll(){
 function deleteWorker(id){askConfirm('حذف العامل نهائياً؟','سيتم حذفه من السحابة ايضا',async()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save(); try{ if(currentUserId) await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete(); }catch(e){} });}
 function deleteArchiveRec(id){askConfirm('حذف سجل الأرشيف؟','لا يمكن التراجع',()=>{archive=archive.filter(x=>x.id!=id);save();openArchive();});}
 function openArchive(){document.getElementById('archiveModal').style.display='block'; let list=document.getElementById('archiveList'); list.innerHTML=archive.length?archive.map(r=>{let daysHtml = r.daysData? r.daysData.map(d=>`<div class="flex justify-between text-[11px] py-1 border-b border-white/5"><span>${d.dayName} ${d.date} ${d.isFriday?'⭐':''}</span><span class="${d.frac>1?'text-amber-400 font-bold':d.frac>0?'text-green-400':d.isFriday?'text-amber-400':'text-zinc-500'}">${d.label}</span></div>`).join('') : '';return `<div class="glass rounded-xl p-4 mb-3"><div class="flex justify-between items-start"><div><p class="font-bold">${r.workerName}</p><p class="en-num text-xs text-zinc-400">${r.weekStart} الى ${r.weekEnd} • ${formatDays(r.days)} • ${r.date}</p></div><button onclick="haptic('delete');deleteArchiveRec('${r.id}')" class="btn-pro w-8 h-8 bg-red-500/20 text-red-400 rounded-full"><i class="fa-solid fa-trash"></i></button></div><div class="mt-3 bg-black/30 rounded-xl p-3">${daysHtml}</div><p class="en-num text-sm mt-2">الكلي ${en(r.total)} - السلف ${en(r.adv)} - الصافي <span class="text-amber-400 font-black">${en(r.net)}</span></p></div>`;}).join(''):`<p class="text-center text-zinc-500 mt-10">لا يوجد أرشيف</p>`; pushModal('archive');}
-function closeArchive(){let m=document.getElementById('archiveModal'); if(m) m.style.display='none'; try{ if(history.state && history.state.modal=='archive') history.back(); }catch(e){}}
+function closeArchive(){let m=document.getElementById('archiveModal'); if(m) m.style.display='none'; if(history.state && history.state.modal=='archive'){ history.back(); }}
 function openBackup(){document.getElementById('backupModal').style.display='flex'; pushModal('backup');}
-function closeBackup(){let m=document.getElementById('backupModal'); if(m) m.style.display='none'; try{ if(history.state && history.state.modal=='backup') history.back(); }catch(e){}}
+function closeBackup(){let m=document.getElementById('backupModal'); if(m) m.style.display='none'; if(history.state && history.state.modal=='backup'){ history.back(); }}
 function exportBackup(){let data={workers,attendance,advances,archive,workHours:defaultWorkHours,exportDate:new Date().toISOString()};let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`firas_backup_${fmt(new Date())}.json`;a.click();URL.revokeObjectURL(url);}
 function importBackup(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{try{let data=JSON.parse(ev.target.result);if(data.workers)workers=data.workers;if(data.attendance)attendance=data.attendance;if(data.advances)advances=data.advances;if(data.archive)archive=data.archive;if(data.workHours){ defaultWorkHours=data.workHours; localStorage.setItem('firas_work_hours', defaultWorkHours); }save();closeBackup();}catch(err){}};reader.readAsText(file);}
 function sendWhatsApp(id){
@@ -784,7 +810,7 @@ function closeFeedbackModal(){
     f.style.display='none';
   }
   const t=document.getElementById('fbText'); if(t) t.value='';
-  try{ if(history.state && history.state.modal=='feedback') history.back(); }catch(e){}
+  if(history.state && history.state.modal=='feedback'){ history.back(); }
 }
 async function sendFeedback(){
   const fbTextEl = document.getElementById('fbText');
@@ -837,8 +863,6 @@ window.addEventListener('beforeunload', function(){
   localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
   localStorage.setItem('firas_v3_last_save', Date.now().toString());
 });
-
-// --- نظام الرجوع الكامل + خروج بمرتين ---
 let lastBackPress = 0;
 (function(){
   try{ 
@@ -846,47 +870,52 @@ let lastBackPress = 0;
     history.pushState({modal:'home'}, '', location.pathname);
   }catch(e){}
   window.addEventListener('popstate', function(e){
-    let pm=document.getElementById('profileModal');
-    if(pm && pm.style.display=='block'){ pm.style.display='none'; currentProfileId=null;
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    let cm=document.getElementById('confirmModal');
+    if(cm && cm.style.display=='flex'){ 
+      cm.style.display='none'; 
+      pendingAction=null;
       return;
     }
     let hm=document.getElementById('hoursModal');
-    if(hm && hm.style.display=='flex'){ hm.style.display='none'; hoursTarget=null; isBulkHours=false; isExtraMode=false;
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(hm && hm.style.display=='flex'){ 
+      hm.style.display='none'; 
+      hoursTarget=null; isBulkHours=false; isExtraMode=false;
+      let c=document.getElementById('customHours'); if(c) c.value='';
       return;
     }
-    let cm=document.getElementById('confirmModal');
-    if(cm && cm.style.display=='flex'){ cm.style.display='none'; pendingAction=null;
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    let pm=document.getElementById('profileModal');
+    if(pm && pm.style.display=='block'){ 
+      pm.style.display='none'; 
+      currentProfileId=null;
       return;
     }
     let am=document.getElementById('archiveModal');
-    if(am && (am.style.display=='block' || am.style.display=='flex')){ am.style.display='none';
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(am && (am.style.display=='block' || am.style.display=='flex')){ 
+      am.style.display='none';
       return;
     }
     let ad=document.getElementById('addModal');
-    if(ad && ad.style.display=='flex'){ ad.style.display='none';
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(ad && ad.style.display=='flex'){ 
+      ad.style.display='none';
       return;
     }
     let bm=document.getElementById('backupModal');
-    if(bm && bm.style.display=='flex'){ bm.style.display='none';
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(bm && bm.style.display=='flex'){ 
+      bm.style.display='none';
       return;
     }
     let wh=document.getElementById('workHoursModal');
-    if(wh && wh.style.display=='flex'){ wh.style.display='none';
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(wh && wh.style.display=='flex'){ 
+      wh.style.display='none';
       return;
     }
     let fm=document.getElementById('feedbackModal');
-    if(fm && fm.style.display=='flex'){ fm.classList.add('hidden'); fm.style.display='none';
-      try{ history.pushState({modal:'home'}, '', location.pathname); }catch(err){} 
+    if(fm && (fm.style.display=='flex' || !fm.classList.contains('hidden'))){ 
+      fm.classList.add('hidden'); 
+      fm.style.display='none';
+      const t=document.getElementById('fbText'); if(t) t.value='';
       return;
     }
-
     let now = Date.now();
     if(now - lastBackPress < 2000){
       return;
@@ -897,7 +926,6 @@ let lastBackPress = 0;
     }
   });
 })();
-
 render();
 </script>
 
