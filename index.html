@@ -346,7 +346,8 @@ async function loginGoogle(){
     if(cs) cs.innerText = "☁️ جاري فتح Google...";
     await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const isWebView = /wv|WebView|Spock|FBAN|FBAV/i.test(navigator.userAgent) || window.navigator.standalone === false;
-    if(isWebView && /Android/i.test(navigator.userAgent)){ await auth.signInWithRedirect(provider); return; }
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+if (isIOS || isWebView) { await auth.signInWithRedirect(provider); return; }
     const result = await auth.signInWithPopup(provider);
     if(result && result.user){
       currentUserId=result.user.uid;
