@@ -23,13 +23,15 @@ body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
 .hidden-btn{opacity:0;pointer-events:none;transform:scale(0.8);transition:all 0.2s}
 #feedbackFloat{position:fixed;bottom:90px;left:15px;z-index:60;background:#1a1a1a;border:1px solid #fbbf24;color:#fbbf24;padding:11px 16px;border-radius:50px;font-size:12px;font-weight:900;box-shadow:0 8px 25px rgba(0,0,0,0.6);display:flex;align-items:center;gap:6px}
 /* NEW V4.1 */
-.lang-switch{display:flex;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:3px;gap:3px}
+..lang-switch{display:flex;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:3px;gap:3px}
 .lang-switch button{padding:6px 14px;border-radius:100px;font-size:11px;font-weight:900;transition:all 0.2s;color:#9ca3af}
 .lang-switch button.active{background:#fbbf24;color:#111;box-shadow:0 2px 10px rgba(251,191,36,0.4)}
 .pill-toggle{position:relative;display:flex;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:100px;padding:4px;gap:2px}
 .pill-toggle .active-bg{position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);background:linear-gradient(135deg,#fde68a,#fbbf24);border-radius:100px;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);box-shadow:0 3px 12px rgba(251,191,36,0.4)}
 .pill-toggle.weekly .active-bg{right:4px;left:auto}
 .pill-toggle.monthly .active-bg{left:4px;right:auto;transform:translateX(0)}
+html[dir="ltr"] .pill-toggle.weekly .active-bg{left:4px;right:auto}
+html[dir="ltr"] .pill-toggle.monthly .active-bg{right:4px;left:auto}
 .pill-toggle button{position:relative;z-index:1;flex:1;padding:8px 16px;border-radius:100px;font-size:11px;font-weight:900;transition:all 0.2s;color:#9ca3af}
 .pill-toggle button.active{color:#111}
 </style>
@@ -258,12 +260,18 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-let workers=JSON.parse(localStorage.getItem('firas_v3_workers')||'[]');
-let attendance=JSON.parse(localStorage.getItem('firas_v3_att')||'{}');
-let advances=JSON.parse(localStorage.getItem('firas_v3_adv')||'{}');
-let archive=JSON.parse(localStorage.getItem('firas_v3_archive')||'[]');
-let currentProfileId=null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
 let currentUserId = null;
+function storageKey(base){
+  const uid = currentUserId || localStorage.getItem('firas_last_uid') || 'default';
+  return base + '_' + uid;
+}
+
+let workers = JSON.parse(localStorage.getItem(storageKey('firas_v3_workers')) || '[]');
+let attendance = JSON.parse(localStorage.getItem(storageKey('firas_v3_att')) || '{}');
+let advances = JSON.parse(localStorage.getItem(storageKey('firas_v3_adv')) || '{}');
+let archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
+let currentProfileId = null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
+
 let defaultWorkHours = parseInt(localStorage.getItem('firas_work_hours')||'8');
 let viewMode = localStorage.getItem('firas_view_mode')||'weekly';
 let currentLang = localStorage.getItem('firas_lang')||'ar';
@@ -596,34 +604,29 @@ function logout(){
   localStorage.removeItem('firas_last_uid');
   auth.signOut().then(()=>{ location.reload(); });
 }
-auth.onAuthStateChanged(user=>{
-  if(user){
-    const lastUid = localStorage.getItem('firas_last_uid');
-    if(lastUid && lastUid!== user.uid){
-      workers=[]; attendance={}; advances={}; archive=[];
-      localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-      localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-      localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
-      localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
-      render();
-    }
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUserId = user.uid;
     localStorage.setItem('firas_last_uid', user.uid);
-    currentUserId=user.uid;
-    document.getElementById('lockScreen').style.display='none';
+    workers = JSON.parse(localStorage.getItem(storageKey('firas_v3_workers')) || '[]');
+    attendance = JSON.parse(localStorage.getItem(storageKey('firas_v3_att')) || '{}');
+    advances = JSON.parse(localStorage.getItem(storageKey('firas_v3_adv')) || '{}');
+    archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
+    render();
+    document.getElementById('lockScreen').style.display = 'none';
     setUserName(user);
-    const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText=t('loadingData');
+    const cs = document.getElementById('cloudStatus');
+    if (cs) cs.innerText = t('loadingData');
     cloudLoad();
   } else {
-    document.getElementById('lockScreen').style.display='block';
-    const appLang = document.getElementById('appLangSwitch');
-    if(appLang) appLang.style.display='none';
+    document.getElementById('lockScreen').style.display = 'flex';
   }
 });
 async function cloudLoad(){
   try{
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText=t('loginGoogle'); render(); return; }
-    const lastSave = parseInt(localStorage.getItem('firas_v3_last_save') || '0');
+    const lastSave = parseInt(localStorage.getItem(storageKey('firas_v3_last_save')) || '0');
     const isQuickRefresh = (Date.now() - lastSave) < 120000;
     if(isQuickRefresh && workers.length > 0){
       if(cs) cs.innerText=t('localSave');
@@ -663,31 +666,31 @@ async function cloudLoad(){
         if(workers.length === 0){
           workers=[]; attendance={}; advances={}; archive=[];
         }
-        localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-        localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-        localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
-        localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+        localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
+        localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
+        localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
+        localStorage.setItem(storageKey('firas_v3_archive'),JSON.stringify(archive));
         if(cs) cs.innerText=t('newAccount');
         await parentRef.set({archive:[], workHours: defaultWorkHours, created:new Date().toISOString(), email:auth.currentUser.email}, {merge:true});
       }
     }
-    localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-    localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-    localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
-    localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
+    localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
+    localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
+    localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
+    localStorage.setItem(storageKey('firas_v3_archive'),JSON.stringify(archive));
     let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('عامل تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
     if(toDelete.length>0){
       workers = workers.filter(w=> !toDelete.includes(w.id));
       toDelete.forEach(id=>{ delete attendance[id]; delete advances[id]; });
-      localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-      localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-      localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
+      localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
+      localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
+      localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
       try{
         for(let id of toDelete){
           await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete();
         }
       }catch(e){}
-      showToast('تم حذف '+toDelete.length+' عامل تجربة تلقائيا ✅');
+      showToast(currentLang==='en'?'Deleted '+toDelete.length+' test workers automatically ✅':'تم حذف '+toDelete.length+' عامل تجربة تلقائيا ✅');
     }
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
@@ -703,6 +706,7 @@ async function cloudSaveReal(){
       batch.set(ref, {name:w.name, wage:w.wage, photo:w.photo||null, attendance:attendance[w.id]||{}, advance:advances[w.id]||0, updated:new Date().toISOString()}, {merge:false});
     });
     await batch.commit();
+    localStorage.setItem(storageKey('firas_v3_last_save'), Date.now().toString());
     const cs=document.getElementById('cloudStatus');
     if(cs){
       let timeStr = new Date().toLocaleTimeString(currentLang==='en'?'en-US':'ar-IQ');
@@ -729,14 +733,14 @@ function formatDays(n){
 }
 function getWeekDays(){if(viewMode==='monthly') return getMonthDays();let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
 function getMonthDays(){let now=new Date(currentWeekStart); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
-function save(){
-  localStorage.setItem('firas_v3_workers',JSON.stringify(workers));
-  localStorage.setItem('firas_v3_att',JSON.stringify(attendance));
-  localStorage.setItem('firas_v3_adv',JSON.stringify(advances));
-  localStorage.setItem('firas_v3_archive',JSON.stringify(archive));
-  localStorage.setItem('firas_v3_last_save', Date.now().toString());
+function save() {
+  localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
+  localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
+  localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
+  localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+  localStorage.setItem(storageKey('firas_v3_last_save'), Date.now().toString());
   render();
-  if(currentProfileId)renderProfile(currentProfileId);
+  if (currentProfileId) renderProfile(currentProfileId);
   cloudSaveReal();
 }
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
@@ -1023,28 +1027,27 @@ function clearAdvance(id){
     showToast(t('advanceCleared')); 
   });
 }
-function addAdvance(id){let v=parseInt(document.getElementById('advInput').value);if(!v)return;advances[id]=(advances[id]||0)+v;document.getElementById('advInput').value='';save();}
-function settleWeek(id){askConfirm('تصفية وتصفير الأسبوع؟','سيتم حفظ التفاصيل في الأرشيف',()=>{let w=workers.find(x=>x.id==id);let weekDays=getWeekDays();let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);if(weekSum==0){showToast('لا يوجد حضور',true);return;}let total=Math.round(weekSum*w.wage);let adv=advances[id]||0;let daysData=weekDays.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday};});let rec={id:Date.now().toString(),workerId:id,workerName:w.name,weekStart:fmt(weekDays[0]),weekEnd:fmt(weekDays[6]),days:weekSum,wage:w.wage,total,adv,net:total-adv,date:fmt(new Date()), daysData};archive.unshift(rec);weekDays.forEach(d=>{let ds=fmt(d);if(attendance[id])delete attendance[id][ds];});advances[id]=0;save();openArchive();});}
 function settleAll(){
   let weekDays=getWeekDays();
   let hasAny = workers.some(w=>{ let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return sum>0; });
-  if(!hasAny){showToast('لا يوجد حضور للتصفية',true); return;}
-  askConfirm(`تصفية الكل؟ ${workers.length} عامل`,'راح ينحفظ كلشي بالارشيف ويتصفر الاسبوع',()=>{
+  let isEnAll = currentLang==='en';
+  if(!hasAny){showToast(isEnAll?'No attendance to settle':'لا يوجد حضور للتصفية',true); return;}
+  askConfirm(isEnAll?`Settle all? ${workers.length} workers`:`تصفية الكل؟ ${workers.length} عامل`, isEnAll?'Everything will be saved to archive and week will be reset':'راح ينحفظ كلشي بالارشيف ويتصفر الاسبوع',()=>{
     let now=fmt(new Date()); let added=0;
     workers.forEach(w=>{
       let weekSum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
       if(weekSum==0) return;
       let total=Math.round(weekSum*w.wage); let adv=advances[w.id]||0;
-      let daysData=weekDays.map(d=>{ let ds=fmt(d); let frac=attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0); let isFriday=d.getDay()===5; let label=getDayStatusLabel(frac,isFriday); return {date:ds, dayName:d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday}; });
+      let daysData=weekDays.map(d=>{ let ds=fmt(d); let frac=attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0); let isFriday=d.getDay()===5; let label=getDayStatusLabel(frac,isFriday); return {date:ds, dayName: currentLang==='en' ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday}; });
       let rec={id:Date.now().toString()+"_"+w.id, workerId:w.id, workerName:w.name, weekStart:fmt(weekDays[0]), weekEnd:fmt(weekDays[6]), days:weekSum, wage:w.wage, total, adv, net:total-adv, date:now, daysData};
       archive.unshift(rec); added++;
     });
     workers.forEach(w=>{ weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[w.id]) delete attendance[w.id][ds]; }); advances[w.id]=0; });
-    save(); showToast(`تمت تصفية ${added} عامل ✅`); openArchive();
+    save(); showToast(currentLang==='en'?`Settled ${added} workers ✅`:`تمت تصفية ${added} عامل ✅`); openArchive();
   });
 }
-function deleteWorker(id){askConfirm('حذف العامل نهائياً؟','سيتم حذفه من السحابة ايضا',async()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save(); try{ if(currentUserId) await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete(); }catch(e){} });}
-function deleteArchiveRec(id){askConfirm('حذف سجل الأرشيف؟','لا يمكن التراجع',()=>{archive=archive.filter(x=>x.id!=id);save();openArchive();});}
+function deleteWorker(id){let t=currentLang==='en'?'Delete worker permanently?':'حذف العامل نهائياً؟';let m=currentLang==='en'?'It will also be deleted from cloud':'سيتم حذفه من السحابة ايضا';askConfirm(t,m,async()=>{workers=workers.filter(w=>w.id!=id);delete attendance[id];delete advances[id];closeProfile();save();try{if(currentUserId)await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete();}catch(e){}});}
+function deleteArchiveRec(id){let t=currentLang==='en'?'Delete archive record?':'حذف سجل الأرشيف؟';let m=currentLang==='en'?'Cannot be undone':'لا يمكن التراجع';askConfirm(t,m,()=>{archive=archive.filter(x=>x.id!=id);save();openArchive();});}
 function openArchive(){document.getElementById('archiveModal').style.display='block'; let list=document.getElementById('archiveList'); list.innerHTML=archive.length?archive.map(r=>{let daysHtml = r.daysData? r.daysData.map(d=>`<div class="flex justify-between text-[11px] py-1 border-b border-white/5"><span>${d.dayName} ${d.date} ${d.isFriday?'⭐':''}</span><span class="${d.frac>1?'text-amber-400 font-bold':d.frac>0?'text-green-400':d.isFriday?'text-amber-400':'text-zinc-500'}">${d.label}</span></div>`).join('') : '';return `<div class="glass rounded-xl p-4 mb-3"><div class="flex justify-between items-start"><div><p class="font-bold">${r.workerName}</p><p class="en-num text-xs text-zinc-400">${r.weekStart} الى ${r.weekEnd} • ${formatDays(r.days)} • ${r.date}</p></div><button onclick="haptic('delete');deleteArchiveRec('${r.id}')" class="btn-pro w-8 h-8 bg-red-500/20 text-red-400 rounded-full"><i class="fa-solid fa-trash"></i></button></div><div class="mt-3 bg-black/30 rounded-xl p-3">${daysHtml}</div><p class="en-num text-sm mt-2">الكلي ${en(r.total)} - السلف ${en(r.adv)} - الصافي <span class="text-amber-400 font-black">${en(r.net)}</span></p></div>`;}).join(''):`<p class="text-center text-zinc-500 mt-10">لا يوجد أرشيف</p>`; pushModal('archive');}
 function closeArchive(){let m=document.getElementById('archiveModal'); if(m) m.style.display='none'; if(history.state && history.state.modal=='archive'){ history.back(); }}
 function openBackup(){document.getElementById('backupModal').style.display='flex'; pushModal('backup');}
@@ -1108,56 +1111,38 @@ function sendWhatsAppImage(id){
   });
 }
 function sendAllWhatsApp(){
-  if(workers.length===0){showToast('لا يوجد عمال',true); return;}
-
-  let days = getWeekDays();
-  
-  // نقرا نوع الدفع من ذاكرة النظام مباشرة
+  if(workers.length===0){showToast(currentLang==='en'?'No workers':'لا يوجد عمال',true); return;}  let days = getWeekDays();
   try{
     let p = localStorage.getItem('payPeriod') || localStorage.getItem('periodType') || '';
     if(p && (p.toLowerCase().indexOf('month') > -1 || p.indexOf('شهري') > -1)){
-      if(typeof getMonthDays === 'function'){
-        days = getMonthDays();
-      } else {
-        let now = new Date();
-        let y = now.getFullYear(), m = now.getMonth();
-        days = [];
-        for(let d=1; d<=new Date(y, m+1, 0).getDate(); d++) days.push(new Date(y,m,d));
-      }
+      if(typeof getMonthDays === 'function'){ days = getMonthDays(); }
     }
   }catch(e){}
-
-  let periodType = days.length > 7 ? 'شهري' : 'أسبوعي';
-
-  let header=`*كشف حساب كل العمال - ${periodType}*
-الفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])} - دوام ${defaultWorkHours}س\nالتاريخ: ${fmt(new Date())}\n${'='.repeat(25)}\n\n`;
-let body=workers.map(w=>{
-let weekSum=days.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
-let total=Math.round(weekSum*w.wage); let adv=advances[w.id]||0; let net=total-adv;
-
-let details = days.map(d=>{
-  let attVal = attendance[w.id]?attendance[w.id][fmt(d)]:0;
-  let frac = attendanceToFraction(attVal);
-  let dayName = d.toLocaleDateString('ar-EG',{weekday:'long'});
-  let statusText = '';
-  if(frac === 1) statusText = 'حاضر';
-  else if(frac === 0.5) statusText = 'نص يوم';
-  else if(frac === 0) statusText = 'غائب';
-  else {
-    let hrs = Math.round(frac * defaultWorkHours);
-    statusText = en(hrs) + ' ساعات';
-  }
-  return `${dayName} ${fmt(d)} : ${statusText}`;
-}).join('\n');
-
-return `*كشف حساب - ${w.name}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType}) (دوام ${en(defaultWorkHours)}س)\nاليومية: ${en(w.wage)}\nعدد الأيام: ${en(weekSum)} أيام\n\n${details}\n\nالمجموع: ${en(total)}\nالسلف: ${en(adv)}\nالباقي: ${en(net)}\n`;
-}).join('\n'+'='.repeat(25)+'\n\n');
-  let grandTotal = workers.reduce((s,w)=>{
-    let weekSum=days.reduce((sd,d)=>sd+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
-    return s + Math.round(weekSum*w.wage) - (advances[w.id]||0);
-  },0);
-  let footer=`\n${'='.repeat(25)}\n*المجموع الكلي للباقي: ${en(grandTotal)} د.ع*`;
+  let isEn = currentLang==='en';
+  let periodType = days.length > 7 ? (isEn ? 'Monthly' : 'شهري') : (isEn ? 'Weekly' : 'أسبوعي');
+  let header = isEn ? `*All Workers Statement - ${periodType}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])} - Shift ${defaultWorkHours}h\nDate: ${fmt(new Date())}\n${'='.repeat(25)}\n\n` : `*كشف حساب كل العمال - ${periodType}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])} - دوام ${defaultWorkHours}س\nالتاريخ: ${fmt(new Date())}\n${'='.repeat(25)}\n\n`;
+  let body=workers.map(w=>{
+    let weekSum=days.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0);
+    let total=Math.round(weekSum*w.wage); let adv=advances[w.id]||0; let net=total-adv;
+    let details = days.map(d=>{
+      let attVal = attendance[w.id]?attendance[w.id][fmt(d)]:0;
+      let frac = attendanceToFraction(attVal);
+      let dayName = isEn ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-EG',{weekday:'long'});
+      let statusText = '';
+      if(isEn){
+        if(frac === 1) statusText = 'Present'; else if(frac === 0.5) statusText = 'Half day'; else if(frac === 0) statusText = 'Absent'; else { let hrs = Math.round(frac * defaultWorkHours); statusText = hrs + ' hours'; }
+      } else {
+        if(frac === 1) statusText = 'حاضر'; else if(frac === 0.5) statusText = 'نص يوم'; else if(frac === 0) statusText = 'غائب'; else { let hrs = Math.round(frac * defaultWorkHours); statusText = en(hrs) + ' ساعات'; }
+      }
+      return `${dayName} ${fmt(d)} : ${statusText}`;
+    }).join('\n');
+    return isEn ? `*Statement - ${w.name}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType}) (Shift ${en(defaultWorkHours)}h)\nDaily Wage: ${en(w.wage)}\nTotal Days: ${en(weekSum)} Days\n\n${details}\n\nTotal: ${en(total)}\nAdvance: ${en(adv)}\nNet: ${en(net)}\n` : `*كشف حساب - ${w.name}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType}) (دوام ${en(defaultWorkHours)}س)\nاليومية: ${en(w.wage)}\nعدد الأيام: ${en(weekSum)} أيام\n\n${details}\n\nالمجموع: ${en(total)}\nالسلف: ${en(adv)}\nالباقي: ${en(net)}\n`;
+  }).join('\n'+'='.repeat(25)+'\n\n');
+  let grandTotal = workers.reduce((s,w)=>{ let weekSum=days.reduce((sd,d)=>sd+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return s + Math.round(weekSum*w.wage) - (advances[w.id]||0); },0);
+  let footer = isEn ? `\n${'='.repeat(25)}\n*Total Net for All: ${en(grandTotal)} IQD*` : `\n${'='.repeat(25)}\n*المجموع الكلي للباقي: ${en(grandTotal)} د.ع*`;
   let msg=header+body+footer;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
+
   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`,'_blank');
 }
 function openFeedbackModal(){ 
@@ -1209,7 +1194,7 @@ async function sendFeedback(){
         "نص الملاحظة": text,
         "ايميل العامل": auth.currentUser? auth.currentUser.email : 'زائر غير مسجل',
         "اسم العامل": auth.currentUser? auth.currentUser.displayName : 'عامل',
-        "التاريخ": new Date().toLocaleString('ar-IQ'),
+     "التاريخ": new Date().toLocaleString(currentLang==='en'?'en-US':'ar-IQ'),
         "الموقع": "firas-hadada.web.app"
       })
     });
@@ -1220,7 +1205,7 @@ async function sendFeedback(){
   }catch(e){
     if(modalInner) modalInner.innerHTML = originalHTML;
     closeFeedbackModal();
-    showToast('❌ خطأ: '+e.message, true);
+    showToast((currentLang==='en'?'❌ Error: ':'❌ خطأ: ')+e.message, true);
   }
 }
 function openAdminFeedback(){
