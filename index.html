@@ -1028,6 +1028,17 @@ function setHours(h){
 }
 function setCustomHours(){ let h=parseFloat(document.getElementById('customHours').value); if(!h || h<=0) return; if(h>24) return; setHours(h); }
 function changeWeek(d){let nd=new Date(currentWeekStart);nd.setDate(nd.getDate()+(d*7));currentWeekStart=nd;save();}
+function addAdvance(id){
+  const inp=document.getElementById('advInput');
+  if(!inp) return;
+  let val=parseFloat(inp.value);
+  if(isNaN(val) || val<=0){ showToast(t('enterAmount') || (currentLang==='en'?'Enter amount':'اكتب المبلغ'), true); return; }
+  if(!advances[id]) advances[id]=0;
+  advances[id]+=val;
+  inp.value='';
+  save();
+  if(typeof renderProfile==='function') renderProfile(id);
+}
 function clearAdvance(id){ 
   if((advances[id]||0)==0){ showToast(t('noAdvanceToast'), true); return; }
   askConfirm(t('deleteAdvQ'), `${t('total')} ${en(advances[id])} ${t('currency')}`, ()=>{
