@@ -117,6 +117,8 @@ html[dir="ltr"] .pill-toggle.monthly .active-bg{right:4px;left:auto}
 
 <!-- كود الجزء الثاني - PRO مع صوت واهتزاز -->
 <style>
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:32px;height:32px;border:3px solid #fbbf24;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px}
 .btn-pro{
   transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)!important;
   touch-action: manipulation;
@@ -1179,8 +1181,8 @@ async function sendFeedback(){
   if(text.length<5){ showToast(currentLang==='en'?'⚠️ Too short':'⚠️ قصيرة جدا', true); return; }
   const modalInner = document.getElementById('feedbackModalInner');
   const originalHTML = modalInner ? modalInner.innerHTML : '';
-if(modalInner) modalInner.innerHTML = currentLang==='en' ? '<div style="padding:30px;text-align:center"><p>⏳ Sending...</p></div>' : '<div style="padding:30px;text-align:center"><p>⏳ جاري الإرسال...</p></div>';
-    try{
+  if(modalInner) modalInner.innerHTML = currentLang==='en' ? '<div style="padding:40px 20px;text-align:center"><div style="width:32px;height:32px;border:3px solid #fbbf24;border-top-color:transparent;border-radius:50%;margin:0 auto 12px;animation:spin 0.8s linear infinite"></div><p style="color:#a1a1aa;font-size:13px">⏳ Sending...</p></div>' : '<div style="padding:40px 20px;text-align:center"><div style="width:32px;height:32px;border:3px solid #fbbf24;border-top-color:transparent;border-radius:50%;margin:0 auto 12px;animation:spin 0.8s linear infinite"></div><p style="color:#a1a1aa;font-size:13px">⏳ جاري الإرسال...</p></div>';
+  try{
     const feedbackData = {
       type, text,
       user: auth?.currentUser?.email || 'زائر',
@@ -1189,9 +1191,9 @@ if(modalInner) modalInner.innerHTML = currentLang==='en' ? '<div style="padding:
       date: new Date().toISOString(),
       dateStr: new Date().toLocaleString('ar-IQ')
     };
-    await Promise.all([
-      db.collection('site_feedbacks').add(feedbackData),
-      fetch('https://formsubmit.co/ajax/kobani64444@gmail.com', {
+    // FIX السرعة: ننتظر فقط Firestore (0.3s) - الايميل يرسل في الخلفية
+    await db.collection('site_feedbacks').add(feedbackData);
+    fetch('https://formsubmit.co/ajax/kobani64444@gmail.com', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
@@ -1205,18 +1207,18 @@ if(modalInner) modalInner.innerHTML = currentLang==='en' ? '<div style="padding:
           "التاريخ": new Date().toLocaleString(currentLang==='en'?'en-US':'ar-IQ'),
           "الموقع": "firas-hadada.web.app"
         })
-      }).catch(()=>{})
-    ]);
+      }).catch(()=>{});
     haptic('save');
-if (modalInner) modalInner.innerHTML = originalHTML;
-applyLangPro();
-closeFeedbackModal();
-showToast(currentLang==='en'?'✅ Sent successfully':'✅ تم الارسال بنجاح');
-}catch(e){
-if(modalInner) modalInner.innerHTML = originalHTML;
-if(typeof applyLang === 'function') applyLang(currentLang);
-closeFeedbackModal();
-showToast((currentLang==='en'?'❌ Error: ':'❌ خطأ: ')+e.message, true);
+    if (modalInner) modalInner.innerHTML = originalHTML;
+    applyLangPro();
+    closeFeedbackModal();
+    showToast(currentLang==='en'?'✅ Sent successfully':'✅ تم الارسال بنجاح');
+  }catch(e){
+    if(modalInner) modalInner.innerHTML = originalHTML;
+    if(typeof applyLangPro === 'function') applyLangPro();
+    else if(typeof applyLang === 'function') applyLang(currentLang);
+    closeFeedbackModal();
+    showToast((currentLang==='en'?'❌ Error: ':'❌ خطأ: ')+e.message, true);
   }
 }
 function openAdminFeedback(){
