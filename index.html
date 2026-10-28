@@ -1047,6 +1047,20 @@ function clearAdvance(id){
     showToast(t('advanceCleared')); 
   });
 }
+function settleWeek(id){
+  let weekDays=getWeekDays();
+  let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
+  if(sum==0){ showToast(currentLang==='en'?'No attendance to settle':'لا يوجد حضور للتصفية', true); return; }
+  let w=workers.find(x=>x.id==id); if(!w) return;
+  let total=Math.round(sum*w.wage); let adv=advances[id]||0;
+  let daysData=weekDays.map(d=>{ let ds=fmt(d); let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0); let isFriday=d.getDay()===5; let label=getDayStatusLabel(frac,isFriday); return {date:ds, dayName: currentLang==='en' ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-IQ',{weekday:'long'}), frac, label, amount:Math.round(frac*w.wage), isFriday}; });
+  askConfirm(currentLang==='en'?`Settle ${w.name}?`:`تصفية ${w.name}؟`, `${t('total')} ${en(total)} - ${en(adv)} = ${en(total-adv)} ${t('currency')}`, ()=>{
+    let rec={id:Date.now().toString()+"_"+id, workerId:id, workerName:w.name, weekStart:fmt(weekDays[0]), weekEnd:fmt(weekDays[6]), days:sum, wage:w.wage, total, adv, net:total-adv, date:fmt(new Date()), daysData};
+    archive.unshift(rec);
+    weekDays.forEach(d=>{ let ds=fmt(d); if(attendance[id]) delete attendance[id][ds]; });
+    advances[id]=0; save(); closeProfile(); showToast(currentLang==='en'?`Settled ✅`:`تمت التصفية ✅`); openArchive();
+  });
+}
 function settleAll(){
   let weekDays=getWeekDays();
   let hasAny = workers.some(w=>{ let sum=weekDays.reduce((s,d)=>s+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return sum>0; });
