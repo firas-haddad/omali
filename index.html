@@ -538,7 +538,6 @@ function changeWorkHours() {
     document.body.appendChild(modal);
     modal.onclick = (e) => { if (e.target == modal) closeWorkHoursModal(); }
   }
-  // تحديث المحتوى في كل مرة حسب اللغة الحالية
   modal.innerHTML = `<div style="background:#1e1e1e;width:100%;max-width:360px;border-radius:20px;padding:20px;border:1px solid #fbbf24/30">
       <h3 style="font-weight:900;color:#fbbf24;margin-bottom:6px">⏱️ ${t('workBar')}</h3>
       <p style="color:#a1a1aa;font-size:12px;margin-bottom:12px">${currentLang==='en'?'Current:':'الحالي:'} <span style="color:white;font-weight:900">${defaultWorkHours}</span> ${t('hoursWord')}</p>
