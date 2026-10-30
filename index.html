@@ -1425,6 +1425,122 @@ if(searchInput){
 }
 </script>
 
-
+<script>
+function getDayName(dateStr){
+  try{
+    let d=new Date(dateStr);
+    let daysAr=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    let daysEn=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return currentLang==='en' ? daysEn[d.getDay()] : daysAr[d.getDay()];
+  }catch(e){ return ''; }
+}
+function toEnDigits(str){
+  if(!str) return str;
+  return str.toString().replace(/[٠-٩]/g, s => String.fromCharCode(s.charCodeAt(0) - 1728)).replace(/[۰-۹]/g, s => String.fromCharCode(s.charCodeAt(0) - 1728));
+}
+function getAdvancesList(id){
+  let v=advances[id];
+  if(!v) return [];
+  if(Array.isArray(v)) return v;
+  if(typeof v==='number' && v>0){
+    let today=new Date().toISOString().split('T')[0];
+    return [{amount:v, date:today}];
+  }
+  return [];
+}
+function getAdvancesTotal(id){
+  return getAdvancesList(id).reduce((s,x)=>s+(x.amount||0),0);
+}
+addAdvance = function(id){
+  const inp=document.getElementById('advInput');
+  const dateInp=document.getElementById('advDateInput');
+  if(!inp) return;
+  let val=parseFloat(toEnDigits(inp.value));
+  if(isNaN(val)||val<=0){ showToast(currentLang==='en' ? 'Enter amount' : 'اكتب المبلغ',true); return; }
+  let dateStr = toEnDigits(dateInp && dateInp.value ? dateInp.value : new Date().toISOString().split('T')[0]);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){ dateStr=new Date().toISOString().split('T')[0]; }
+  let list=getAdvancesList(id);
+  list.push({amount:val, date:dateStr});
+  advances[id]=list;
+  inp.value='';
+  if(dateInp) dateInp.value=new Date().toISOString().split('T')[0];
+  save(); renderProfile(id);
+  showToast(currentLang==='en' ? 'Advance added ✅' : 'تمت إضافة السلفة ✅');
+}
+deleteAdvanceItem = function(id,index){
+  let list=getAdvancesList(id);
+  if(!list[index]) return;
+  let item=list[index];
+  let day = getDayName(item.date);
+  askConfirm(currentLang==='en' ? 'Delete this advance?' : 'حذف هذه السلفة؟', `${day} • ${item.date} - ${en(item.amount)} ${t('currency')}`, ()=>{
+    list.splice(index,1);
+    advances[id]=list;
+    save(); renderProfile(id);
+    showToast(t('advanceCleared'));
+  });
+}
+clearAdvance = function(id){
+  let total=getAdvancesTotal(id);
+  if(total==0){ showToast(t('noAdvanceToast'),true); return; }
+  askConfirm(t('deleteAdvQ'), `${t('total')} ${en(total)} ${t('currency')}`, ()=>{
+    advances[id]=[];
+    save(); renderProfile(id);
+    showToast(t('advanceCleared'));
+  });
+}
+// --- تم حذف الخدعة القديمة ---
+let originalRenderProfile = renderProfile;
+renderProfile = function(id){
+  let result = originalRenderProfile(id);
+  setTimeout(()=>{
+    let inp = document.getElementById('advInput');
+    if(inp){
+      let parent = inp.closest('.glass');
+      if(parent && !document.getElementById('advList')){
+        let adv = getAdvancesTotal(id);
+        let txtTotal = currentLang==='en' ? 'Total' : 'المجموع';
+        let txtAdd = currentLang==='en' ? 'Add' : 'إضافة';
+        let txtClearAll = currentLang==='en' ? 'Clear All' : 'حذف الكل';
+        let txtNoAdv = currentLang==='en' ? 'No advances yet' : 'لا يوجد سلف مسجلة';
+        parent.innerHTML = `
+<div class="flex justify-between items-center mb-3"><p class="font-bold text-sm">💰 ${t('advance')}</p><span class="text-[11px] bg-amber-400/20 text-amber-400 border border-amber-400/30 px-2 py-1 rounded-full">${txtTotal}: <span class="en-num">${en(adv)}</span></span></div>
+<div class="flex gap-2 mb-3 items-center">
+  <input id='advInput' type='number' placeholder='0' class='flex-1 min-w-0 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm en-num' dir="ltr" lang="en">
+  <input id='advDateInput' type='text' inputmode='numeric' pattern='[0-9-]*' placeholder='2026-10-29' lang='en' dir='ltr' value='${new Date().toISOString().split('T')[0]}' class='w-[130px] shrink-0 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-2 text-xs en-num' style="font-family:monospace; direction:ltr;">
+  <button onclick="haptic('save');addAdvance('${id}')" class="w-[60px] shrink-0 bg-amber-400 text-black px-2 py-2.5 rounded-lg text-xs font-black btn-pro">${txtAdd}</button>
+</div>
+<div id='advList' class="space-y-1.5 max-h-[180px] overflow-y-auto">
+${(function(){let list=getAdvancesList(id); if(list.length==0) return `<p class='text-[11px] text-zinc-500 text-center py-2'>${txtNoAdv}</p>`; return list.map((it, idx)=>{let dayName=getDayName(it.date); return `<div class='flex justify-between items-center bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-2'><div class='flex flex-col'><span class='text-xs font-bold'><span class='en-num'>${en(it.amount)}</span> ${t('currency')}</span><span class='text-[10px] text-zinc-400'><span class="en-num">${dayName} • ${toEnDigits(it.date)}</span></span></div><button onclick="haptic('delete');deleteAdvanceItem('${id}', ${idx})" class='w-7 h-7 bg-red-500/20 text-red-400 border border-red-500/30 rounded-full text-[11px]'>✕</button></div>`;}).join('');})()}
+</div>
+${adv>0?`<div class="flex justify-end mt-3"><button onclick="haptic('delete');clearAdvance('${id}')" class="text-[11px] bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full font-bold">${txtClearAll} 🗑️</button></div>`:''}
+`;
+      }
+    }
+  }, 50);
+  return result;
+}
+// --- إصلاح كشف الواتساب لعامل واحد - هذا اللي كان يسبب [object Object] ---
+let originalSendWhatsApp = typeof sendWhatsApp !== 'undefined' ? sendWhatsApp : null;
+if(originalSendWhatsApp){
+  sendWhatsApp = function(id){
+    // نجبره يستخدم المجموع بدل المصفوفة
+    let old = advances[id];
+    advances[id] = getAdvancesTotal(id);
+    let res = originalSendWhatsApp(id);
+    advances[id] = old;
+    return res;
+  }
+}
+let originalSendWhatsAppImage = typeof sendWhatsAppImage !== 'undefined' ? sendWhatsAppImage : null;
+if(originalSendWhatsAppImage){
+  sendWhatsAppImage = function(id){
+    let old = advances[id];
+    advances[id] = getAdvancesTotal(id);
+    let res = originalSendWhatsAppImage(id);
+    advances[id] = old;
+    return res;
+  }
+}
+</script>
 </body>
 </html>
