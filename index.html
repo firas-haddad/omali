@@ -1107,7 +1107,7 @@ function sendWhatsApp(id){
   let w=workers.find(x=>x.id==id);
   let days = viewMode==='weekly'?getWeekDays():getMonthDays();
   let sum=days.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
-  let total=Math.round(sum*w.wage);let adv=advances[id]||0;let net=total-adv;
+  let total=Math.round(sum*w.wage);let adv=getAdvancesTotal(id);let net=total-adv;
   let lines=days.map(d=>{let ds=fmt(d);let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return `${d.toLocaleDateString(currentLang==='en'?'en-US':'ar-IQ',{weekday:'long'})} ${ds}: ${label}`;}).join('\n');
   let period = viewMode === 'weekly' ? `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])}` : `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])} (${t('monthly')})`;
 let isEn = currentLang === 'en';
@@ -1121,15 +1121,15 @@ let advWord = isEn ? 'Advance' : 'السلف';
 let netWord = isEn ? 'Net' : 'الباقي';
 let toWord = isEn ? 'to' : 'الى';
 let msg = isEn ?
-  `*${reportWord} - ${w.name}*\n${periodWord}: ${fmt(days[0])} ${toWord} ${fmt(days[days.length-1])} (${viewMode==='weekly'?'Weekly':'Monthly'}) (${shiftWord} ${defaultWorkHours}h)\n${wageWord}: ${w.wage}\n${daysWord}: ${sum.toFixed(1)}\n\n${lines}\n\n${totalWord}: ${total} ${t('currency')}\n${advWord}: ${adv} ${t('currency')}\n${netWord}: ${net} ${t('currency')}` :
-  `*${reportWord} - ${w.name}*\n${periodWord}: ${fmt(days[0])} الى ${fmt(days[days.length-1])} (${viewMode==='weekly'?'أسبوعي':'شهري'}) (${shiftWord} ${defaultWorkHours}س)\n${wageWord}: ${w.wage}\n${daysWord}: ${formatDays(sum)}\n\n${lines}\n\n${totalWord}: ${total} ${t('currency')}\n${advWord}: ${adv} ${t('currency')}\n${netWord}: ${net} ${t('currency')}`;
+`*${reportWord} - ${w.name}*\n${periodWord}: ${fmt(days[0])} ${toWord} ${fmt(days[days.length-1])} (${viewMode==='weekly'?'Weekly':'Monthly'}) (${shiftWord} ${defaultWorkHours}h)\n${wageWord}: ${en(w.wage)}\n${daysWord}: ${sum.toFixed(1)}\n\n${lines}\n\n${totalWord}: ${en(total)} ${t('currency')}\n${advWord}: ${en(adv)} ${t('currency')}\n${netWord}: ${en(net)} ${t('currency')}` :
+`*${reportWord} - ${w.name}*\n${periodWord}: ${fmt(days[0])} الى ${fmt(days[days.length-1])} (${viewMode==='weekly'?'أسبوعي':'شهري'}) (${shiftWord} ${defaultWorkHours}س)\n${wageWord}: ${en(w.wage)}\n${daysWord}: ${formatDays(sum)}\n\n${lines}\n\n${totalWord}: ${en(total)} ${t('currency')}\n${advWord}: ${en(adv)} ${t('currency')}\n${netWord}: ${en(net)} ${t('currency')}`;
 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
 }
 function sendWhatsAppImage(id){
   let w=workers.find(x=>x.id==id);
   let days = viewMode==='weekly'?getWeekDays():getMonthDays();
   let sum=days.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
-  let total=Math.round(sum*w.wage); let adv=advances[id]||0; let net=total-adv;
+  let total=Math.round(sum*w.wage); let adv=getAdvancesTotal(id); let net=total-adv;
   let canvas=document.getElementById('shareCanvas');
   let neededH = 380 + days.length*75 + 350;
   canvas.width=1080; canvas.height=neededH;
