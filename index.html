@@ -276,6 +276,7 @@ try{
   archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
 }catch(e){ console.log('Storage corrupted, using defaults'); }
 let currentProfileId = null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
+let isCloudLoaded = false;
 let defaultWorkHours = parseInt(localStorage.getItem('firas_work_hours')||'8');
 let viewMode = localStorage.getItem('firas_view_mode')||'weekly';
 let currentLang = localStorage.getItem('firas_lang')||'ar';
@@ -692,6 +693,7 @@ async function cloudLoad(){
       }catch(e){}
       showToast(currentLang==='en'?'Deleted '+toDelete.length+' test workers automatically ✅':'تم حذف '+toDelete.length+' عامل تجربة تلقائيا ✅');
     }
+    isCloudLoaded = true;
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
 }
@@ -759,7 +761,7 @@ function save() {
   }
   render();
   if (currentProfileId) renderProfile(currentProfileId);
-  cloudSaveReal();
+if(isCloudLoaded) cloudSaveReal();
 }
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
 function getDayStatusLabel(frac, isFriday){
