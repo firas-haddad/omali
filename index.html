@@ -279,6 +279,7 @@ let currentProfileId = null,currentWeekStart=getWeekStart(new Date()),tempPhoto=
 
 let defaultWorkHours = parseInt(localStorage.getItem('firas_work_hours')||'8');
 let viewMode = localStorage.getItem('firas_view_mode')||'weekly';
+
 let currentLang = localStorage.getItem('firas_lang')||'ar';
 let _pAudio=null;
 
@@ -741,7 +742,7 @@ function formatDays(n){
   return currentLang==='en' ? `${num} ${v===1?t('day'):t('days')}` : `${num} ${t('days')}`;
 }
 function getWeekDays(){if(viewMode==='monthly') return getMonthDays();let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
-function getMonthDays(){let now=new Date(currentWeekStart); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
+function getMonthDays(){let now=new Date(); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
 function save() {
   try {
     localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
