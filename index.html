@@ -635,14 +635,6 @@ async function cloudLoad(){
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText=t('loginGoogle'); render(); return; }
     const lastSave = parseInt(localStorage.getItem(storageKey('firas_v3_last_save')) || '0');
-    const isQuickRefresh = true;
-    if(isQuickRefresh && workers.length > 0){
-      if(cs) cs.innerText=t('localSave');
-      render();
-      await cloudSaveReal();
-      if(cs) cs.innerText=t('syncDone');
-      return;
-    }
     const parentRef = db.collection('firas_data').doc(currentUserId);
     const workersCol = parentRef.collection('workers');
     const snap = await workersCol.get();
