@@ -635,7 +635,7 @@ async function cloudLoad(){
     const cs = document.getElementById('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText=t('loginGoogle'); render(); return; }
     const lastSave = parseInt(localStorage.getItem(storageKey('firas_v3_last_save')) || '0');
-    const isQuickRefresh = (Date.now() - lastSave) < 120000;
+    const isQuickRefresh = true;
     if(isQuickRefresh && workers.length > 0){
       if(cs) cs.innerText=t('localSave');
       render();
