@@ -1179,9 +1179,9 @@ function sendAllWhatsApp(){
       let dayName = isEn ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-EG',{weekday:'long'});
       let statusText = '';
       if(isEn){
-        if(frac === 1) statusText = 'Present'; else if(frac === 0.5) statusText = 'Half day'; else if(frac === 0) statusText = 'Absent'; else { let hrs = Math.round(frac * defaultWorkHours); statusText = hrs + ' hours'; }
+        if(frac === 0 && d.getDay()===5) statusText = 'Holiday - Friday'; else if(frac === 1) statusText = 'Present'; else if(frac === 0.5) statusText = 'Half day'; else if(frac === 0) statusText = 'Absent'; else if(frac > 1){ let ex = Math.round(frac * defaultWorkHours) - defaultWorkHours; statusText = 'Present + ' + ex + ' extra hours'; } else { let hrs = Math.round(frac * defaultWorkHours); statusText = hrs + ' hours'; }
       } else {
-        if(frac === 1) statusText = 'حاضر'; else if(frac === 0.5) statusText = 'نص يوم'; else if(frac === 0) statusText = 'غائب'; else { let hrs = Math.round(frac * defaultWorkHours); statusText = en(hrs) + ' ساعات'; }
+        if(frac === 0 && d.getDay()===5) statusText = 'عطلة - الجمعة'; else if(frac === 1) statusText = 'حاضر'; else if(frac === 0.5) statusText = 'نص يوم'; else if(frac === 0) statusText = 'غائب'; else if(frac > 1){ let ex = Math.round(frac * defaultWorkHours) - defaultWorkHours; statusText = 'حاضر + ' + en(ex) + ' ساعات اضافي'; } else { let hrs = Math.round(frac * defaultWorkHours); statusText = en(hrs) + ' ساعات'; }
       }
       return `${dayName} ${fmt(d)} : ${statusText}`;
     }).join('\n');
