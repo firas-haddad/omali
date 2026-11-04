@@ -637,6 +637,14 @@ async function cloudLoad(){
     if(!currentUserId){ if(cs) cs.innerText=t('loginGoogle'); render(); return; }
     const lastSave = parseInt(localStorage.getItem(storageKey('firas_v3_last_save')) || '0');
     const parentRef = db.collection('firas_data').doc(currentUserId);
+    const metaEarly = await parentRef.get();
+const cloudTime = metaEarly.exists && metaEarly.data().updated ? Date.parse(metaEarly.data().updated) : 0;
+if (lastSave > cloudTime + 2000) {
+  await cloudSaveReal();
+  isCloudLoaded = true;
+  render();
+  return;
+}
     const workersCol = parentRef.collection('workers');
     const snap = await workersCol.get();
     if(!snap.empty){
