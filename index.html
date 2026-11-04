@@ -1043,7 +1043,7 @@ function setHours(h){
   closeHours();save();
 }
 function setCustomHours(){ let h=parseFloat(document.getElementById('customHours').value); if(!h || h<=0) return; if(h>24) return; setHours(h); }
-function changeWeek(d){let nd=new Date(currentWeekStart);nd.setDate(nd.getDate()+(d*7));currentWeekStart=nd;save();}
+function changeWeek(d){ if(viewMode==='monthly'){ currentWeekStart=new Date(currentWeekStart.getFullYear(), currentWeekStart.getMonth()+d, 1); } else { let nd=new Date(currentWeekStart); nd.setDate(nd.getDate()+(d*7)); currentWeekStart=nd; } save(); }
 function addAdvance(id){
   const inp=document.getElementById('advInput');
   if(!inp) return;
