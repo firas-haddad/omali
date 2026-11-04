@@ -735,9 +735,12 @@ function fmt(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'
 function en(n){return Number(n||0).toLocaleString('en-US');}
 function formatDays(n){
   if(!n) return currentLang==='en' ? "0 Days" : "0 أيام";
-  let v = Math.round(n*10)/10;
-  let num = (v%1===0? v.toFixed(0) : v.toFixed(1));
-  return currentLang==='en' ? `${num} ${v===1?t('day'):t('days')}` : `${num} ${t('days')}`;
+  let full = Math.floor(n + 0.000001);
+  let extra = Math.round((n - full) * defaultWorkHours);
+  if(extra >= defaultWorkHours){ full += 1; extra = 0; }
+  if(extra === 0) return currentLang==='en' ? `${en(full)} ${full===1?t('day'):t('days')}` : `${en(full)} ${t('days')}`;
+  if(full === 0) return currentLang==='en' ? `${en(extra)} hours` : `${en(extra)} ساعات`;
+  return currentLang==='en' ? `${en(full)} ${t('days')} + ${en(extra)} extra hours` : `${en(full)} ${t('days')} + ${en(extra)} ساعات اضافي`;
 }
 function getWeekDays(){if(viewMode==='monthly') return getMonthDays();let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
 function getMonthDays(){let now=new Date(currentWeekStart); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
@@ -1185,7 +1188,7 @@ function sendAllWhatsApp(){
       }
       return `${dayName} ${fmt(d)} : ${statusText}`;
     }).join('\n');
-    return isEn ? `*Statement - ${w.name}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType}) (Shift ${en(defaultWorkHours)}h)\nDaily Wage: ${en(w.wage)}\nTotal Days: ${en(weekSum)} Days\n\n${details}\n\nTotal: ${en(total)}\nAdvance: ${en(adv)}\nNet: ${en(net)}\n` : `*كشف حساب - ${w.name}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType}) (دوام ${en(defaultWorkHours)}س)\nاليومية: ${en(w.wage)}\nعدد الأيام: ${en(weekSum)} أيام\n\n${details}\n\nالمجموع: ${en(total)}\nالسلف: ${en(adv)}\nالباقي: ${en(net)}\n`;
+    return isEn ? `*Statement - ${w.name}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType}) (Shift ${en(defaultWorkHours)}h)\nDaily Wage: ${en(w.wage)}\nTotal Days: ${formatDays(weekSum)}\n\n${details}\n\nTotal: ${en(total)}\nAdvance: ${en(adv)}\nNet: ${en(net)}\n` : `*كشف حساب - ${w.name}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType}) (دوام ${en(defaultWorkHours)}س)\nاليومية: ${en(w.wage)}\nعدد الأيام: ${formatDays(weekSum)}\n\n${details}\n\nالمجموع: ${en(total)}\nالسلف: ${en(adv)}\nالباقي: ${en(net)}\n`;
   }).join('\n'+'='.repeat(25)+'\n\n');
   let grandTotal = workers.reduce((s,w)=>{ let weekSum=days.reduce((sd,d)=>sd+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return s + Math.round(weekSum*w.wage) - (getAdvancesTotal(w.id)); },0);
   let footer = isEn ? `\n${'='.repeat(25)}\n*Total Net for All: ${en(grandTotal)} IQD*` : `\n${'='.repeat(25)}\n*المجموع الكلي للباقي: ${en(grandTotal)} د.ع*`;
