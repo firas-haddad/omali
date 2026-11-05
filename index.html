@@ -262,19 +262,43 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+function el(id) {
+  return document.getElementById(id);
+}
+
+function show(id) {
+  const e = el(id);
+  if (e) e.style.display = 'flex';
+}
+
+function hide(id) {
+  const e = el(id);
+  if (e) e.style.display = 'none';
+}
+
 let currentUserId = null;
 function storageKey(base){
   const uid = currentUserId || localStorage.getItem('firas_last_uid') || 'default';
   return base + '_' + uid;
 }
-
+function loadLocal() {
+  try {
+    workers = JSON.parse(localStorage.getItem(storageKey('firas_v3_workers')) || '[]');
+    attendance = JSON.parse(localStorage.getItem(storageKey('firas_v3_att')) || '{}');
+    advances = JSON.parse(localStorage.getItem(storageKey('firas_v3_adv')) || '{}');
+    archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
+  } catch (e) {
+    console.log('Storage corrupted, using defaults');
+  }
+}
+function saveLocal() {
+  localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
+  localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
+  localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
+  localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+}
 let workers=[], attendance={}, advances={}, archive=[];
-try{
-  workers = JSON.parse(localStorage.getItem(storageKey('firas_v3_workers')) || '[]');
-  attendance = JSON.parse(localStorage.getItem(storageKey('firas_v3_att')) || '{}');
-  advances = JSON.parse(localStorage.getItem(storageKey('firas_v3_adv')) || '{}');
-  archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
-}catch(e){ console.log('Storage corrupted, using defaults'); }
+loadLocal();
 let currentProfileId = null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
 let isCloudLoaded = false;
 let defaultWorkHours = parseInt(localStorage.getItem('firas_work_hours')||'8');
@@ -577,7 +601,7 @@ function setUserName(user){
   }
   const appLang = document.getElementById('appLangSwitch');
   if(appLang) appLang.style.display='flex';
-  if(user && user.uid==='d7E5JqIlpUMFTl4RFMKpoS8qbNe2'){
+  if(user && user.uid==='kBQx0j2QVVV4qANwGxtrm3YWaPt2'){
     const inboxBtn = document.getElementById('adminInboxBtn');
     if(inboxBtn) inboxBtn.style.display='flex';
     loadFeedbacks();
@@ -598,7 +622,7 @@ async function loginGoogle(){
     const result = await auth.signInWithPopup(provider);
     if(result && result.user){
       currentUserId=result.user.uid;
-      document.getElementById('lockScreen').style.display='none';
+      hide('lockScreen');
       setUserName(result.user);
       cloudLoad();
     }
@@ -608,7 +632,7 @@ async function loginGoogle(){
     } else { if(cs) cs.innerText = "☁️ خطأ: "+e.message; }
   }
 }
-auth.getRedirectResult().then((r)=>{ if(r && r.user){ currentUserId=r.user.uid; document.getElementById('lockScreen').style.display='none'; setUserName(r.user); cloudLoad(); }}).catch(()=>{});
+auth.getRedirectResult().then((r)=>{ if(r && r.user){ currentUserId=r.user.uid; hide('lockScreen'); setUserName(r.user); cloudLoad(); }}).catch(()=>{});
 function logout(){
   localStorage.removeItem('firas_last_uid');
   auth.signOut().then(()=>{ location.reload(); });
@@ -617,23 +641,20 @@ auth.onAuthStateChanged(user => {
   if (user) {
     currentUserId = user.uid;
     localStorage.setItem('firas_last_uid', user.uid);
-    workers = JSON.parse(localStorage.getItem(storageKey('firas_v3_workers')) || '[]');
-    attendance = JSON.parse(localStorage.getItem(storageKey('firas_v3_att')) || '{}');
-    advances = JSON.parse(localStorage.getItem(storageKey('firas_v3_adv')) || '{}');
-    archive = JSON.parse(localStorage.getItem(storageKey('firas_v3_archive')) || '[]');
+    loadLocal();
     render();
-    document.getElementById('lockScreen').style.display = 'none';
+    hide('lockScreen');
     setUserName(user);
-    const cs = document.getElementById('cloudStatus');
+    const cs = el('cloudStatus');
     if (cs) cs.innerText = t('loadingData');
     cloudLoad();
   } else {
-    document.getElementById('lockScreen').style.display = 'flex';
+    show('lockScreen');
   }
 });
 async function cloudLoad(){
   try{
-    const cs = document.getElementById('cloudStatus');
+    const cs = el('cloudStatus');
     if(!currentUserId){ if(cs) cs.innerText=t('loginGoogle'); render(); return; }
     const lastSave = parseInt(localStorage.getItem(storageKey('firas_v3_last_save')) || '0');
     const parentRef = db.collection('firas_data').doc(currentUserId);
@@ -675,26 +696,18 @@ if (lastSave > cloudTime + 2000) {
         if(workers.length === 0){
           workers=[]; attendance={}; advances={}; archive=[];
         }
-        localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
-        localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
-        localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
-        localStorage.setItem(storageKey('firas_v3_archive'),JSON.stringify(archive));
+        saveLocal();
         if(cs) cs.innerText=t('newAccount');
         await parentRef.set({archive:[], workHours: defaultWorkHours, created:new Date().toISOString(), email:auth.currentUser.email}, {merge:true});
       }
     }
-    localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
-    localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
-    localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
-    localStorage.setItem(storageKey('firas_v3_archive'),JSON.stringify(archive));
+    saveLocal();
     let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('عامل تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
     if(toDelete.length>0){
       workers = workers.filter(w=> !toDelete.includes(w.id));
       toDelete.forEach(id=>{ delete attendance[id]; delete advances[id]; });
-      localStorage.setItem(storageKey('firas_v3_workers'),JSON.stringify(workers));
-      localStorage.setItem(storageKey('firas_v3_att'),JSON.stringify(attendance));
-      localStorage.setItem(storageKey('firas_v3_adv'),JSON.stringify(advances));
-      try{
+       saveLocal();
+       try{
         for(let id of toDelete){
           await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete();
         }
@@ -1308,10 +1321,7 @@ async function deleteFeedback(id){
 }
 window.addEventListener('beforeunload', () => {
   try {
-    localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
-    localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
-    localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
-    localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+    saveLocal();
   } catch (e) {}
 });
 let lastBackPress = 0;
