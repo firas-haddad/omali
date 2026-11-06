@@ -292,11 +292,35 @@ function loadLocal() {
   }
 }
 function saveLocal() {
-  localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
-  localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
-  localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
-  localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+  try {
+    localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
+    localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
+    localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
+    localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+    localStorage.setItem(storageKey('firas_v3_last_save'), Date.now().toString());
+  } catch (e) {
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      try {
+        let workersNoPhoto = workers.map(w => ({ ...w, photo: null }));
+        localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workersNoPhoto));
+        localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
+        localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
+        localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
+        showToast(currentLang === 'en' ? 'Storage full! Saved without photos' : 'التخزين امتلأ! تم الحفظ بدون صور', true);
+      } catch (e2) {
+        showToast(currentLang === 'en' ? 'Storage full! Export backup' : 'التخزين ممتلئ! صدّر نسخة', true);
+      }
+    }
+  }
 }
+
+function save() {
+  saveLocal();
+  render();
+  if (currentProfileId) renderProfile(currentProfileId);
+  if (isCloudLoaded) cloudSaveReal();
+}
+  
 let workers=[], attendance={}, advances={}, archive=[];
 loadLocal();
 let currentProfileId = null,currentWeekStart=getWeekStart(new Date()),tempPhoto=null,pendingAction=null,hoursTarget=null,isBulkHours=false,isExtraMode=false;
@@ -519,7 +543,7 @@ function showToast(msg, isError=false){
 function checkStorageLimit(newPhoto){
   let workersWithPhoto = workers.filter(w=>w.photo).length;
   let totalSizeKB = 0;
-  try{ totalSizeKB = (localStorage.getItem('firas_v3_workers')||'').length / 1024; }catch(e){ totalSizeKB = 5000; }
+  try{ totalSizeKB = (localStorage.getItem(storageKey('firas_v3_workers'))||'').length / 1024; }catch(e){ totalSizeKB = 5000; }
   if(newPhoto && workersWithPhoto >= 55){
     showToast(t('photoLimit'), true);
     return false;
@@ -759,31 +783,7 @@ function formatDays(n){
 }
 function getWeekDays(){if(viewMode==='monthly') return getMonthDays();let a=[];for(let i=0;i<7;i++){let d=new Date(currentWeekStart);d.setDate(currentWeekStart.getDate()+i);a.push(d);}return a;}
 function getMonthDays(){let now=new Date(currentWeekStart); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
-function save() {
-  try {
-    localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workers));
-    localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
-    localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
-    localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
-    localStorage.setItem(storageKey('firas_v3_last_save'), Date.now().toString());
-  } catch (e) {
-    if (e.name === 'QuotaExceededError' || e.code === 22) {
-      try {
-        let workersNoPhoto = workers.map(w => ({ ...w, photo: null }));
-        localStorage.setItem(storageKey('firas_v3_workers'), JSON.stringify(workersNoPhoto));
-        localStorage.setItem(storageKey('firas_v3_att'), JSON.stringify(attendance));
-        localStorage.setItem(storageKey('firas_v3_adv'), JSON.stringify(advances));
-        localStorage.setItem(storageKey('firas_v3_archive'), JSON.stringify(archive));
-        showToast(currentLang === 'en' ? 'Storage full! Saved without photos' : 'التخزين امتلأ! تم الحفظ بدون صور', true);
-      } catch (e2) {
-        showToast(currentLang === 'en' ? 'Storage full! Export backup' : 'التخزين ممتلئ! صدّر نسخة', true);
-      }
-    }
-  }
-  render();
-  if (currentProfileId) renderProfile(currentProfileId);
-if(isCloudLoaded) cloudSaveReal();
-}
+
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
 function getDayStatusLabel(frac, isFriday){
   if(isFriday && frac===0) return t('fridayOff');
