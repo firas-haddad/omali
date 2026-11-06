@@ -726,18 +726,6 @@ if (lastSave > cloudTime + 2000) {
       }
     }
     saveLocal();
-    let toDelete = workers.filter(w=> w.name.includes('تجربة') || w.name.includes('عامل تجربة') || w.name.includes('مقاول تجربة') || w.id.includes('test_') || w.id.startsWith('test')).map(w=>w.id);
-    if(toDelete.length>0){
-      workers = workers.filter(w=> !toDelete.includes(w.id));
-      toDelete.forEach(id=>{ delete attendance[id]; delete advances[id]; });
-       saveLocal();
-       try{
-        for(let id of toDelete){
-          await db.collection('firas_data').doc(currentUserId).collection('workers').doc(id).delete();
-        }
-      }catch(e){}
-      showToast(currentLang==='en'?'Deleted '+toDelete.length+' test workers automatically ✅':'تم حذف '+toDelete.length+' عامل تجربة تلقائيا ✅');
-    }
     isCloudLoaded = true;
     render();
   }catch(e){ const cs=document.getElementById('cloudStatus'); if(cs) cs.innerText="☁️ خطأ: "+e.message; render(); }
@@ -1289,6 +1277,7 @@ function closeAdminFeedback(){
   if(m) m.style.display='none';
   if(history.state && history.state.modal=='adminFb'){ history.back(); }
 }
+function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 async function loadFeedbacks(){
   try{
     const snap = await db.collection('site_feedbacks').orderBy('date','desc').limit(50).get();
@@ -1310,7 +1299,7 @@ async function loadFeedbacks(){
         const d=doc.data();
         let div=document.createElement('div');
         div.style.cssText='background:#1e1e1e;border:1px solid #2a2a2a;border-radius:14px;padding:12px;margin-bottom:10px';
-        div.innerHTML=`<div style="display:flex;justify-content:space-between"><span style="background:${d.type==='بلاغ خلل'?'#ef4444':'#fbbf24'};color:${d.type==='بلاغ خلل'?'white':'black'};font-size:10px;font-weight:900;padding:3px 8px;border-radius:20px">${d.type}</span><span style="color:#71717a;font-size:10px">${d.dateStr||''}</span></div><p style="margin-top:8px;font-size:13px;color:white">${d.text}</p><p style="margin-top:6px;font-size:10px;color:#a1a1aa">${d.name||''} - ${d.user||''}</p><button onclick="deleteFeedback('${doc.id}')" style="margin-top:8px;background:#ef4444/20;color:#ef4444;font-size:10px;padding:4px 10px;border-radius:20px">حذف</button>`;
+        div.innerHTML=`<div style="display:flex;justify-content:space-between"><span style="background:${d.type==='بلاغ خلل'?'#ef4444':'#fbbf24'};color:${d.type==='بلاغ خلل'?'white':'black'};font-size:10px;font-weight:900;padding:3px 8px;border-radius:20px">${escapeHtml(d.type)}</span><span style="color:#71717a;font-size:10px">${d.dateStr||''}</span></div><p style="margin-top:8px;font-size:13px;color:white">${escapeHtml(d.text)}</p><p style="margin-top:6px;font-size:10px;color:#a1a1aa">${escapeHtml(d.name||'')} - ${escapeHtml(d.user||'')}</p><button onclick="deleteFeedback('${doc.id}')" style="margin-top:8px;background:#ef4444/20;color:#ef4444;font-size:10px;padding:4px 10px;border-radius:20px">حذف</button>`;
         list.appendChild(div);
       });
     }
