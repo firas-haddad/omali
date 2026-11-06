@@ -953,17 +953,18 @@ function openAddWorker(){
   if(saveBtn) saveBtn.innerText = t('save');
   if(cancelBtn) cancelBtn.innerText = t('cancel');
   document.getElementById('editId').value='';document.getElementById('wName').value='';document.getElementById('wWage').value='';
-  tempPhoto=null;document.getElementById('photoPreview').classList.add('hidden');document.getElementById('photoIcon').classList.remove('hidden');
+  tempPhoto=null;window._delPhoto=false;document.getElementById('photoPreview').classList.add('hidden');document.getElementById('photoIcon').classList.remove('hidden');
   pushModal('add');
 }
-function closeAdd(){
-  let m=document.getElementById('addModal');
-  if(m) m.style.display='none';
-  if(history.state && history.state.modal=='add'){ history.back(); }
+function closeAdd() {
+  let m = document.getElementById('addModal');
+  if (m) m.style.display = 'none';
+  window._delPhoto = false;
+  if (history.state && history.state.modal == 'add') { history.back(); }
 }
 function removePhoto(){document.getElementById('delPhotoModal').classList.remove('hidden');}
 function doDeletePhoto(){document.getElementById('delPhotoModal').classList.add('hidden');tempPhoto=null;window._delPhoto=true;let inp=document.getElementById('photoInput');if(inp) inp.value='';let prev=document.getElementById('photoPreview');if(prev){prev.src='';prev.classList.add('hidden');}let icon=document.getElementById('photoIcon');if(icon) icon.classList.remove('hidden');}
-function previewPhoto(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{let img=new Image();img.onload=()=>{let canvas=document.createElement('canvas');let size=400;canvas.width=size;canvas.height=size;let ctx=canvas.getContext('2d');let min=Math.min(img.width,img.height);let sx=(img.width-min)/2,sy=(img.height-min)/2;ctx.drawImage(img,sx,sy,min,min,0,0,size,size);tempPhoto=canvas.toDataURL('image/jpeg',0.75);document.getElementById('photoPreview').src=tempPhoto;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');};img.src=ev.target.result;};reader.readAsDataURL(file);}
+function previewPhoto(e){window._delPhoto=false;let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{let img=new Image();img.onload=()=>{let canvas=document.createElement('canvas');let size=400;canvas.width=size;canvas.height=size;let ctx=canvas.getContext('2d');let min=Math.min(img.width,img.height);let sx=(img.width-min)/2,sy=(img.height-min)/2;ctx.drawImage(img,sx,sy,min,min,0,0,size,size);tempPhoto=canvas.toDataURL('image/jpeg',0.75);document.getElementById('photoPreview').src=tempPhoto;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');};img.src=ev.target.result;};reader.readAsDataURL(file);}
 function saveWorker(){
   let n=document.getElementById('wName').value.trim(),w=parseInt(document.getElementById('wWage').value),editId=document.getElementById('editId').value;
   if(!n||!w){showToast(t('completeData'),true);return;}
@@ -972,7 +973,7 @@ function saveWorker(){
   if(isNewPhoto || isEditWithNewPhoto){
     if(!checkStorageLimit(true)) return;
   }
-  if(editId){let worker=workers.find(x=>x.id==editId);worker.name=n;worker.wage=w;if(window._delPhoto){worker.photo=null;window._delPhoto=false;}else if(tempPhoto)worker.photo=tempPhoto;;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();
+  if(editId){let worker=workers.find(x=>x.id==editId);if(!worker) return;worker.name=n;worker.wage=w;if(window._delPhoto){worker.photo=null;window._delPhoto=false;}else if(tempPhoto)worker.photo=tempPhoto;;}else{let id=Date.now().toString();workers.push({id,name:n,wage:w,photo:tempPhoto});attendance[id]={};advances[id]=0;}tempPhoto=null;closeAdd();save();
 }
 function editCurrentWorker(){
   let w=workers.find(x=>x.id==currentProfileId);if(!w)return;
@@ -984,8 +985,9 @@ function editCurrentWorker(){
   if(saveBtn) saveBtn.innerText = t('save');
   if(cancelBtn) cancelBtn.innerText = t('cancel');
   document.getElementById('editId').value=w.id;document.getElementById('wName').value=w.name;document.getElementById('wWage').value=w.wage;
-  tempPhoto=w.photo||null;
-  if(w.photo){document.getElementById('photoPreview').src=w.photo;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');}
+  tempPhoto=w.photo||null;window._delPhoto=false;
+if(w.photo){document.getElementById('photoPreview').src=w.photo;document.getElementById('photoPreview').classList.remove('hidden');document.getElementById('photoIcon').classList.add('hidden');}
+else{document.getElementById('photoPreview').classList.add('hidden');document.getElementById('photoIcon').classList.remove('hidden');}
   document.getElementById('addModal').style.display='flex';
   pushModal('edit');
 }
@@ -1571,5 +1573,6 @@ if(originalSendWhatsAppImage){
 }
 </script>
 <div id="delPhotoModal" class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-6"><div class="bg-zinc-900 w-full max-w-sm rounded-[25px] p-6 text-center border border-white/10"><div class="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4 text-3xl">🗑️</div><h3 class="font-black text-lg mb-2" data-ar="حذف الصورة؟" data-en="Delete Photo?">حذف الصورة؟</h3><p class="text-zinc-400 text-sm mb-6" data-ar="متأكد تريد حذف صورة العامل؟ راح تصير بدون صورة." data-en="Are you sure you want to delete the worker photo?">متأكد تريد حذف صورة العامل؟ راح تصير بدون صورة.</p><div class="flex gap-2"><button onclick="doDeletePhoto()" class="flex-1 bg-red-500 text-white font-black py-3.5 rounded-xl" data-ar="نعم، احذف" data-en="Yes, Delete">نعم، احذف</button><button onclick="document.getElementById('delPhotoModal').classList.add('hidden')" class="flex-1 bg-zinc-800 font-black py-3.5 rounded-xl" data-ar="إلغاء" data-en="Cancel">إلغاء</button></div></div></div>
+<script>applyLangPro();</script>
 </body>
 </html>
