@@ -12,7 +12,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics-compat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap');
 body{font-family:'Tajawal',sans-serif;background:#0f0f0f;color:white}
@@ -258,11 +257,9 @@ const firebaseConfig = {
   projectId: "firas-hadada",
   storageBucket: "firas-hadada.firebasestorage.app",
   messagingSenderId: "761230966514",
-  appId: "1:761230966514:web:f5bf00b9253f82c5015a6b", 
-  measurementId: "G-KNTW2BSE8W"
+  appId: "1:761230966514:web:f5bf00b9253f82c5015a6b"
 };
 firebase.initializeApp(firebaseConfig);
-const analytics = firebase.analytics();
 const auth = firebase.auth();
 const db = firebase.firestore();
 function el(id) {
@@ -335,8 +332,8 @@ let _pAudio=null;
 
 const I18N = {
   ar: {
-    absent: 'غائب', present: 'حاضر', half: 'نص يوم', hours: 'ساعات',
-    fridayOff: 'عطلة - الجمعة', extra: 'حاضر + {h} ساعات اضافي',
+    absent: '❌ غائب', present: '✅ حاضر', half: '🟡 نص يوم', hours: 'ساعات',
+  fridayOff: '🛑 عطلة - الجمعة', extra: '✅ حاضر + {h} ساعات اضافي',
     days: 'أيام', day: 'يوم', currency: 'د.ع', search: '🔍 بحث باسم العامل...',
     workBar: 'دوام العمل', change: 'تغيير', workers: 'العمال', workersSingle: 'عامل', todayPresent: 'حاضر اليوم',
     weekWage: 'أجور الأسبوع', monthWage: 'أجور الشهر', noWorker: 'لا يوجد عامل باسم',
@@ -374,8 +371,8 @@ const I18N = {
     loginGoogle: 'سجل بـ Google'
   },
   en: {
-    absent: 'Absent', present: 'Present', half: 'Half day', hours: 'hours',
-    fridayOff: 'Friday Off', extra: 'Present + {h}h extra',
+    absent: '❌ Absent', present: '✅ Present', half: '🟡 Half day', hours: 'hours',
+  fridayOff: '🛑 Friday Off', extra: '✅ Present + {h}h extra',
     days: 'Days', day: 'Day', currency: 'IQD', search: '🔍 Search worker...',
     workBar: 'Work Shift', change: 'Change', workers: 'Workers', workersSingle: 'Worker', todayPresent: 'Present Today',
     weekWage: 'Week Total', monthWage: 'Month Total', noWorker: 'No worker named',
@@ -776,13 +773,15 @@ function getWeekDays(){if(viewMode==='monthly') return getMonthDays();let a=[];f
 function getMonthDays(){let now=new Date(currentWeekStart); let year=now.getFullYear(), month=now.getMonth(); let daysInMonth=new Date(year, month+1, 0).getDate(); let arr=[]; for(let i=1;i<=daysInMonth;i++){let d=new Date(year,month,i); arr.push(d);} return arr;}
 
 function attendanceToFraction(v){if(v===true)return 1;if(!v)return 0;if(typeof v==='number')return v;return 0;}
-function getDayStatusLabel(frac, isFriday){
-  if(isFriday && frac===0) return t('fridayOff');
-  if(frac===0) return t('absent');
-  if(frac===1) return t('present');
-  if(frac===0.5) return t('half');
-  if(frac>1){ let extraHours = Math.round((frac-1)*defaultWorkHours); return t('extra').replace('{h}', extraHours); }
-  let hoursOnly = Math.round(frac*defaultWorkHours); return `${hoursOnly} ${t('hours')}`;
+function getDayStatusLabel(frac, isFriday) {
+  let isEn = currentLang === 'en';
+  if (isFriday && frac === 0) return isEn ? '🛑 Friday Off' : '🛑 عطلة - الجمعة';
+  if (frac === 0) return isEn ? '❌ Absent' : '❌ غائب';
+  if (frac === 1) return isEn ? '✅ (Full)' : '✅ (كامل)';
+  if (frac === 0.5) return isEn ? '🟡 (Half day)' : '🟡 (نص يوم)';
+  if (frac > 1) { let h = Math.round((frac - 1) * defaultWorkHours); return isEn ? `✅ (Full + ${h} extra hours)` : `✅ (كامل + ${h} ساعات اضافي)`; }
+  let hrs = Math.round(frac * defaultWorkHours);
+  return isEn ? `🔵 (${hrs} hours)` : `🔵 (${hrs} ساعات)`;
 }
 function ensureWorkHoursBar(){
   let list = document.getElementById('workersList');
@@ -1116,90 +1115,27 @@ function openBackup(){document.getElementById('backupModal').style.display='flex
 function closeBackup(){let m=document.getElementById('backupModal'); if(m) m.style.display='none'; if(history.state && history.state.modal=='backup'){ history.back(); }}
 function exportBackup(){let data={workers,attendance,advances,archive,workHours:defaultWorkHours,exportDate:new Date().toISOString()};let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download=`firas_backup_${fmt(new Date())}.json`;a.click();URL.revokeObjectURL(url);}
 function importBackup(e){let file=e.target.files[0];if(!file)return;let reader=new FileReader();reader.onload=ev=>{try{let data=JSON.parse(ev.target.result);if(data.workers)workers=data.workers;if(data.attendance)attendance=data.attendance;if(data.advances)advances=data.advances;if(data.archive)archive=data.archive;if(data.workHours){ defaultWorkHours=data.workHours; localStorage.setItem('firas_work_hours', defaultWorkHours); }save();closeBackup();}catch(err){}};reader.readAsText(file);}
-function sendWhatsApp(id) {
-  let w = workers.find(x => x.id == id);
-  if (!w) return;
-  let days = viewMode === 'weekly' ? getWeekDays() : getMonthDays();
-  let shiftHours = (typeof defaultWorkHours !== 'undefined' && defaultWorkHours) ? defaultWorkHours : 8;
-  
-  // ===== عربي - أسبوعي + شهري - نفس حساب البرنامج =====
-  if (currentLang !== 'en') {
-    let isMonthly = viewMode === 'monthly';
-    let lines = [];
-    
-    days.forEach((d, idx) => {
-      let frac = attendanceToFraction(attendance[id] ? attendance[id][fmt(d)] : 0);
-      let txt = "";
-      if (frac === 0) txt = "❌ غائب";
-      else if (frac === 1) txt = "✅ (كامل)";
-      else if (frac === 0.5) txt = "🟡 (نص يوم)";
-      else if (frac > 0 && frac < 1) {
-        let h = Math.round(frac * shiftHours);
-        txt = `🔵 (${h} ساعات)`;
-      }
-      else txt = "❌ غائب";
-      
-      if (isMonthly) {
-        let dName = d.toLocaleDateString('ar-IQ', { weekday: 'long' });
-        lines.push(`${dName} ${d.getDate()} الشهر : ${txt}`);
-      } else {
-        let dName = d.toLocaleDateString('ar-IQ', { weekday: 'long' });
-lines.push(`${dName} : ${txt}`);
-      }
-    });
-    
-    let sum = days.reduce((s, d) => s + attendanceToFraction(attendance[id] ? attendance[id][fmt(d)] : 0), 0);
-    let totalDays = Math.floor(sum);
-    let remainingHours = Math.round((sum - totalDays) * shiftHours);
-    if (remainingHours >= shiftHours) {
-      totalDays += Math.floor(remainingHours / shiftHours);
-      remainingHours = remainingHours % shiftHours;
-    }
-    
-    let parts = [];
-    if (totalDays > 0) parts.push(`${totalDays} أيام`);
-    if (remainingHours > 0) parts.push(`${remainingHours} ساعات إضافي`);
-    if (parts.length === 0) parts.push(`0 أيام`);
-    let totalDaysText = `(${parts.join(' + ')})`;
-    
-    let total = Math.round(sum * w.wage);
-    let adv = getAdvancesTotal(id);
-    let net = total - adv;
-    
-    let periodLabel = isMonthly ? 'شهري' : 'أسبوعي';
-    let msg = `*🧾 كشف حساب - ${w.name} 🧾*\n━━━━━━━━━━━━━━\nالفترة : ${fmt(days[0])} الى ${fmt(days[days.length-1])} (${periodLabel})\nاليومية : ${en(w.wage)} د.ع\nعدد الأيام : ${totalDaysText}\n━━━━━━━━━━━━━━\n\n${lines.join('\n')}\n\n━━━━━━━━━━━━━━\nالمستحق : ${en(total)} د.ع\nالسلف : ${en(adv)} د.ع\n*المجموع : ${en(net)} د.ع* 💰`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
-    return;
-  }
-  
-  // ===== انكليزي فقط =====
-  let sum = days.reduce((s, d) => s + attendanceToFraction(attendance[id] ? attendance[id][fmt(d)] : 0), 0);
-  let total = Math.round(sum * w.wage);
-  let adv = getAdvancesTotal(id);
-  let net = total - adv;
-  
-  let lines = days.map(d => {
-    let ds = fmt(d);
-    let frac = attendanceToFraction(attendance[id] ? attendance[id][fmt(d)] : 0);
-    let label = "";
-    if (frac === 0) label = "Absent";
-    else if (frac === 1) label = "(Full)";
-    else if (frac === 0.5) label = "(Half Day)";
-    else if (frac > 0 && frac < 1) label = `(${Math.round(frac*shiftHours)} Hours)`;
-    else label = "Absent";
-    return `${d.toLocaleDateString('en-US',{weekday:'long'})} ${ds}: ${label}`;
-  }).join('\n');
-  
-  let totalDaysEn = Math.floor(sum);
-  let remainingHoursEn = Math.round((sum - totalDaysEn) * shiftHours);
-  if (remainingHoursEn >= shiftHours) {
-    totalDaysEn += Math.floor(remainingHoursEn / shiftHours);
-    remainingHoursEn = remainingHoursEn % shiftHours;
-  }
-  let daysTextEn = `${totalDaysEn} days` + (remainingHoursEn > 0 ? ` + ${remainingHoursEn} extra hours` : '');
-  
-  let msg = `*Statement - ${w.name}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])} (${viewMode==='weekly'?'Weekly':'Monthly'}) (Shift ${shiftHours}h)\nDaily Wage: ${en(w.wage)}\nTotal Days: ${daysTextEn}\n\n${lines}\n\nTotal: ${en(total)} ${t('currency')}\nAdvance: ${en(adv)} ${t('currency')}\nNet: ${en(net)} ${t('currency')}`;
-  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+function sendWhatsApp(id){
+  let w=workers.find(x=>x.id==id);
+  let days = viewMode==='weekly'?getWeekDays():getMonthDays();
+  let sum=days.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
+  let total=Math.round(sum*w.wage);let adv=getAdvancesTotal(id);let net=total-adv;
+  let lines=days.map(d=>{let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return `${d.toLocaleDateString(currentLang==='en'?'en-US':'ar-IQ',{weekday:'long'})} : ${label}`;}).join('\n');
+  let period = viewMode === 'weekly' ? `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])}` : `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])} (${t('monthly')})`;
+let isEn = currentLang === 'en';
+let reportWord = isEn ? 'Statement' : 'كشف حساب';
+let periodWord = isEn ? 'Period' : 'الفترة';
+let shiftWord = isEn ? 'Shift' : 'دوام';
+let wageWord = isEn ? 'Daily Wage' : 'اليومية';
+let daysWord = isEn ? 'Total Days' : 'عدد الأيام';
+let totalWord = isEn ? 'Total' : 'المجموع';
+let advWord = isEn ? 'Advance' : 'السلف';
+let netWord = isEn ? 'Net' : 'الباقي';
+let toWord = isEn ? 'to' : 'الى';
+let msg = isEn ?
+  `🧾 *Statement - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nPeriod : ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${viewMode==='weekly'?'Weekly':'Monthly'})\nDaily Wage : ${en(w.wage)} IQD\nTotal Days : (${formatDays(sum)})\n━━━━━━━━━━━━━━\n\n${lines}\n\n━━━━━━━━━━━━━━\nDue : ${en(total)} IQD\nAdvance : ${en(adv)} IQD\n*Total : ${en(net)} IQD* 💰` :
+  `🧾 *كشف حساب - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nالفترة : ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${viewMode==='weekly'?'أسبوعي':'شهري'})\nاليومية : ${en(w.wage)} د.ع\nعدد الأيام : (${formatDays(sum)})\n━━━━━━━━━━━━━━\n\n${lines}\n\n━━━━━━━━━━━━━━\nالمستحق : ${en(total)} د.ع\nالسلف : ${en(adv)} د.ع\n*المجموع : ${en(net)} د.ع* 💰`;
+window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
 }
 function sendWhatsAppImage(id){
   let w=workers.find(x=>x.id==id);
@@ -1253,15 +1189,10 @@ function sendAllWhatsApp(){
       let attVal = attendance[w.id]?attendance[w.id][fmt(d)]:0;
       let frac = attendanceToFraction(attVal);
       let dayName = isEn ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-EG',{weekday:'long'});
-      let statusText = '';
-      if(isEn){
-        if(frac === 0 && d.getDay()===5) statusText = 'Holiday - Friday'; else if(frac === 1) statusText = 'Present'; else if(frac === 0.5) statusText = 'Half day'; else if(frac === 0) statusText = 'Absent'; else if(frac > 1){ let ex = Math.round(frac * defaultWorkHours) - defaultWorkHours; statusText = 'Present + ' + ex + ' extra hours'; } else { let hrs = Math.round(frac * defaultWorkHours); statusText = hrs + ' hours'; }
-      } else {
-        if(frac === 0 && d.getDay()===5) statusText = 'عطلة - الجمعة'; else if(frac === 1) statusText = 'حاضر'; else if(frac === 0.5) statusText = 'نص يوم'; else if(frac === 0) statusText = 'غائب'; else if(frac > 1){ let ex = Math.round(frac * defaultWorkHours) - defaultWorkHours; statusText = 'حاضر + ' + en(ex) + ' ساعات اضافي'; } else { let hrs = Math.round(frac * defaultWorkHours); statusText = en(hrs) + ' ساعات'; }
-      }
-      return `${dayName} ${fmt(d)} : ${statusText}`;
+      let statusText = getDayStatusLabel(frac, d.getDay()===5);
+      return `${dayName} : ${statusText}`;
     }).join('\n');
-    return isEn ? `*Statement - ${w.name}*\nPeriod: ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType}) (Shift ${en(defaultWorkHours)}h)\nDaily Wage: ${en(w.wage)}\nTotal Days: ${formatDays(weekSum)}\n\n${details}\n\nTotal: ${en(total)}\nAdvance: ${en(adv)}\nNet: ${en(net)}\n` : `*كشف حساب - ${w.name}*\nالفترة: ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType}) (دوام ${en(defaultWorkHours)}س)\nاليومية: ${en(w.wage)}\nعدد الأيام: ${formatDays(weekSum)}\n\n${details}\n\nالمجموع: ${en(total)}\nالسلف: ${en(adv)}\nالباقي: ${en(net)}\n`;
+    return isEn ? `🧾 *Statement - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nPeriod : ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType})\nDaily Wage : ${en(w.wage)} IQD\nTotal Days : (${formatDays(weekSum)})\n━━━━━━━━━━━━━━\n\n${details}\n\n━━━━━━━━━━━━━━\nDue : ${en(total)} IQD\nAdvance : ${en(adv)} IQD\n*Total : ${en(net)} IQD* 💰\n` : `🧾 *كشف حساب - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nالفترة : ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType})\nاليومية : ${en(w.wage)} د.ع\nعدد الأيام : (${formatDays(weekSum)})\n━━━━━━━━━━━━━━\n\n${details}\n\n━━━━━━━━━━━━━━\nالمستحق : ${en(total)} د.ع\nالسلف : ${en(adv)} د.ع\n*المجموع : ${en(net)} د.ع* 💰\n`;
   }).join('\n'+'='.repeat(25)+'\n\n');
   let grandTotal = workers.reduce((s,w)=>{ let weekSum=days.reduce((sd,d)=>sd+attendanceToFraction(attendance[w.id]?attendance[w.id][fmt(d)]:0),0); return s + Math.round(weekSum*w.wage) - (getAdvancesTotal(w.id)); },0);
   let footer = isEn ? `\n${'='.repeat(25)}\n*Total Net for All: ${en(grandTotal)} IQD*` : `\n${'='.repeat(25)}\n*المجموع الكلي للباقي: ${en(grandTotal)} د.ع*`;
