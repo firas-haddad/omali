@@ -1143,8 +1143,8 @@ function sendWhatsApp(id) {
         let dName = d.toLocaleDateString('ar-IQ', { weekday: 'long' });
         lines.push(`${dName} ${d.getDate()} الشهر : ${txt}`);
       } else {
-        let weekNames = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
-        lines.push(`${weekNames[idx]} : ${txt}`);
+        let dName = d.toLocaleDateString('ar-IQ', { weekday: 'long' });
+lines.push(`${dName} : ${txt}`);
       }
     });
     
