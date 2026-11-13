@@ -1120,7 +1120,7 @@ function sendWhatsApp(id){
   let days = viewMode==='weekly'?getWeekDays():getMonthDays();
   let sum=days.reduce((s,d)=>s+attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0),0);
   let total=Math.round(sum*w.wage);let adv=getAdvancesTotal(id);let net=total-adv;
-  let lines=days.map(d=>{let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);return `${d.toLocaleDateString(currentLang==='en'?'en-US':'ar-IQ',{weekday:'long'})} : ${label}`;}).join('\n');
+  let lines=days.map(d=>{let frac=attendanceToFraction(attendance[id]?attendance[id][fmt(d)]:0);let isFriday=d.getDay()===5;let label=getDayStatusLabel(frac,isFriday);let dayName=d.toLocaleDateString(currentLang==='en'?'en-US':'ar-IQ',{weekday:'long'});let dayTitle = (viewMode==='monthly') ? (currentLang==='en' ? `${dayName} ${d.getDate()}` : `${dayName} ${d.getDate()} الشهر`) : dayName;return `${dayTitle} : ${label}`;}).join('\n');
   let period = viewMode === 'weekly' ? `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])}` : `${fmt(days[0])} ${currentLang==='en'?'to':'الى'} ${fmt(days[days.length-1])} (${t('monthly')})`;
 let isEn = currentLang === 'en';
 let reportWord = isEn ? 'Statement' : 'كشف حساب';
@@ -1190,7 +1190,7 @@ function sendAllWhatsApp(){
       let frac = attendanceToFraction(attVal);
       let dayName = isEn ? d.toLocaleDateString('en-US',{weekday:'long'}) : d.toLocaleDateString('ar-EG',{weekday:'long'});
       let statusText = getDayStatusLabel(frac, d.getDay()===5);
-      return `${dayName} : ${statusText}`;
+      let dayTitle = (viewMode==='monthly') ? (currentLang==='en' ? `${dayName} ${d.getDate()}` : `${dayName} ${d.getDate()} الشهر`) : dayName; return `${dayTitle} : ${statusText}`;
     }).join('\n');
     return isEn ? `🧾 *Statement - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nPeriod : ${fmt(days[0])} to ${fmt(days[days.length-1])}\n(${periodType})\nDaily Wage : ${en(w.wage)} IQD\nTotal Days : (${formatDays(weekSum)})\n━━━━━━━━━━━━━━\n\n${details}\n\n━━━━━━━━━━━━━━\nDue : ${en(total)} IQD\nAdvance : ${en(adv)} IQD\n*Total : ${en(net)} IQD* 💰\n` : `🧾 *كشف حساب - ${w.name}* 🧾\n━━━━━━━━━━━━━━\nالفترة : ${fmt(days[0])} الى ${fmt(days[days.length-1])}\n(${periodType})\nاليومية : ${en(w.wage)} د.ع\nعدد الأيام : (${formatDays(weekSum)})\n━━━━━━━━━━━━━━\n\n${details}\n\n━━━━━━━━━━━━━━\nالمستحق : ${en(total)} د.ع\nالسلف : ${en(adv)} د.ع\n*المجموع : ${en(net)} د.ع* 💰\n`;
   }).join('\n'+'='.repeat(25)+'\n\n');
