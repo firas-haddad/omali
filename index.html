@@ -684,7 +684,7 @@ async function cloudLoad(){
     const parentRef = db.collection('firas_data').doc(currentUserId);
     const metaEarly = await parentRef.get();
 const cloudTime = metaEarly.exists && metaEarly.data().updated ? Date.parse(metaEarly.data().updated) : 0;
-if (lastSave > cloudTime + 2000) {
+if (lastSave >= cloudTime) {
   await cloudSaveReal();
   isCloudLoaded = true;
   render();
